@@ -21,5 +21,5 @@ def run():
 
 result = run()
 # show results line by line
-text_to_return = [str(line_return.value) if line_return else '' for line_return in result]
+text_to_return = [(str(line_return) if isinstance(line_return, list) else str(line_return.value)) if line_return else '' for line_return in result]
 stdout.write('\n'.join(text_to_return).strip('\n'))

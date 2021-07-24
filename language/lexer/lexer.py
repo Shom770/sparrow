@@ -1,7 +1,7 @@
 from ..resources.tokens.token_types import TokenType, Token
 from string import ascii_letters
 
-KEYWORDS = ['define', 'cls', 'give']
+KEYWORDS = ['define', 'cls', 'give', 'if', 'elif', 'else', 'and', 'or', 'not']
 LETTERS_DIGITS = ascii_letters + '0123456789'
 
 
@@ -42,16 +42,13 @@ class Lexer:
             elif self.current_char == ',':
                 tokens.append(Token(TokenType.SEPARATOR, ','))
                 self.advance()
-            elif self.current_char in '+-/*^()':
+            elif self.current_char in '+-/*^()!=<>':
                 tokens.append(self.make_operator())
             elif self.current_char == '{':
                 tokens.append(Token(TokenType.BLOCK_OPEN, '{'))
                 self.advance()
             elif self.current_char == '}':
                 tokens.append(Token(TokenType.BLOCK_CLOSE, '}'))
-                self.advance()
-            elif self.current_char == '=':
-                tokens.append(Token(TokenType.EQ, '='))
                 self.advance()
             elif self.current_char in '0124356789.':
                 tokens.append(self.make_number())
@@ -131,6 +128,35 @@ class Lexer:
             token = Token(TokenType.LPAREN, self.current_char)
         elif self.current_char == ')':
             token = Token(TokenType.RPAREN, self.current_char)
+        elif self.current_char == '!':
+            id_str = self.current_char
+            self.advance()
+            id_str += self.current_char
+            token = Token(TokenType.N_EQ, id_str)
+        elif self.current_char == '=':
+            if self.text[self.pos + 1] == '=':
+                id_str = self.current_char
+                self.advance()
+                id_str += self.current_char
+                token = Token(TokenType.IS_EQ, id_str)
+            else:
+                token = Token(TokenType.EQ, self.current_char)
+        elif self.current_char == '<':
+            if self.text[self.pos + 1] == '=':
+                id_str = self.current_char
+                self.advance()
+                id_str += self.current_char
+                token = Token(TokenType.LTE, id_str)
+            else:
+                token = Token(TokenType.LT, self.current_char)
+        elif self.current_char == '>':
+            if self.text[self.pos + 1] == '=':
+                id_str = self.current_char
+                self.advance()
+                id_str += self.current_char
+                token = Token(TokenType.GTE, id_str)
+            else:
+                token = Token(TokenType.GT, self.current_char)
 
         self.advance()
         return token

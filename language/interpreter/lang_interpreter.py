@@ -59,12 +59,41 @@ class Interpreter:
                 return Number(self.visit(node.left_node)) / Number(self.visit(node.right_node))
             elif node.op_tok.token_type == TokenType.EXP:
                 return Number(self.visit(node.left_node)) ** Number(self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.N_EQ:
+                return Number(self.visit(node.left_node) != self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.IS_EQ:
+                return Number(self.visit(node.left_node) == self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.LTE:
+                return Number(self.visit(node.left_node) <= self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.GTE:
+                return Number(self.visit(node.left_node) >= self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.LT:
+                return Number(self.visit(node.left_node) < self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.GT:
+                return Number(self.visit(node.left_node) > self.visit(node.right_node))
+            elif node.op_tok.value == 'and':
+                return Number(self.visit(node.left_node)).anded_by(self.visit(node.right_node))
+            elif node.op_tok.value == 'or':
+                return Number(self.visit(node.left_node)).anded_by(self.visit(node.right_node))
+
         elif type(self.visit(node.left_node)).__name__ == 'String' and \
                 type(self.visit(node.right_node)).__name__ == 'String':
             if node.op_tok.token_type == TokenType.PLUS:
                 return String(self.visit(node.left_node)) + String(self.visit(node.right_node))
-            if node.op_tok.token_type == TokenType.MINUS:
+            elif node.op_tok.token_type == TokenType.MINUS:
                 return String(self.visit(node.left_node)) - String(self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.N_EQ:
+                return String(self.visit(node.left_node) != self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.IS_EQ:
+                return String(self.visit(node.left_node) == self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.LTE:
+                return String(self.visit(node.left_node) <= self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.GTE:
+                return String(self.visit(node.left_node) >= self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.LT:
+                return String(self.visit(node.left_node) < self.visit(node.right_node))
+            elif node.op_tok.token_type == TokenType.GT:
+                return String(self.visit(node.left_node) > self.visit(node.right_node))
 
         elif (type(self.visit(node.left_node)).__name__ == 'String' and \
                 isinstance(self.visit(node.right_node).value, int)) or \
@@ -85,6 +114,8 @@ class Interpreter:
             return number * Number(-1)
         elif node.op_tok.token_type == TokenType.PLUS:
             return number
+        elif node.op_tok.value == 'not':
+            return number.notted_by()
 
     def visit_VarAssignNode(self, node: VarAssignNode) -> None:
         """
@@ -105,3 +136,35 @@ class Interpreter:
         VarAccessNode is a node class used for getting the value of a certain variable, denoted by 'identifier'.
         """
         return self.symbol_table[node.name]
+
+    def visit_IfNode(self, node: IfNode) -> List:
+        """
+        Interprets an if statement.
+
+        IfNode is a node class used for if statements, with the optional elif and else statements following it.
+        """
+        for case in node.cases:
+            condition = case[0]
+            passed_cases = []
+            for idx, cond in enumerate(condition):
+                result = self.visit(cond)
+                passed_cases.append(result)
+            expr = case[-1]
+            if False in [num.value == 1 for num in passed_cases]:
+                pass
+            else:
+                block_results = []
+                for line in [elem for elem in expr if elem is not None]:
+                    res = self.visit(line)
+                    block_results.append(res)
+                return block_results
+
+        if node.else_case:
+            expr = node.else_case
+
+            block_results = []
+            for line in [elem for elem in expr if elem is not None]:
+                res = self.visit(line)
+                block_results.append(res)
+
+            return block_results

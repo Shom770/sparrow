@@ -1,5 +1,5 @@
 from ..tokens.token_types import Token, TokenType
-from typing import Union
+from typing import Union, List
 
 
 class NumberNode:
@@ -30,8 +30,9 @@ class BinOpNode:
     +, -, /, *, ^
     """
     def __init__(self, left_node: Union[NumberNode, StringNode, "BinOpNode", "UnaryOpNode",
-                                        "VarAssignNode", "VarAccessNode"], operator_token: TokenType, right_node: Union[NumberNode, StringNode, "BinOpNode",
-                                          "UnaryOpNode", "VarAssignNode", "VarAccessNode"]):
+                                        "VarAssignNode", "VarAccessNode"], operator_token: TokenType,
+                 right_node: Union[NumberNode, StringNode, "BinOpNode",
+                                   "UnaryOpNode", "VarAssignNode", "VarAccessNode"]):
         self.left_node = left_node
         self.op_tok = operator_token
         self.right_node = right_node
@@ -54,6 +55,19 @@ class UnaryOpNode:
 
     def __repr__(self):
         return f'({self.op_tok}, {self.node})'
+
+
+class IfNode:
+    """Node for an if statement"""
+    def __init__(self, cases: List, else_case: Union[UnaryOpNode, BinOpNode]):
+        self.cases = cases
+        self.else_case = else_case
+
+    def __repr__(self):
+        text = '\n'
+        for condition in self.cases:
+            text += f"condition: {condition}\n"
+        return text
 
 
 class Number:
@@ -79,8 +93,35 @@ class Number:
     def __truediv__(self, other):
         return Number(self.value / other.value)
 
+    def __lt__(self, other):
+        return Number(self.value < other.value)
+
+    def __le__(self, other):
+        return Number(self.value <= other.value)
+
+    def __gt__(self, other):
+        return Number(self.value > other.value)
+
+    def __ge__(self, other):
+        return Number(self.value >= other.value)
+
+    def __ne__(self, other):
+        return Number(self.value != other.value)
+
+    def __eq__(self, other):
+        return Number(self.value == other.value)
+
     def __repr__(self):
         return f'{self.value}'
+
+    def anded_by(self, other):
+        return Number(int(self.value and other.value))
+
+    def ored_by(self, other):
+        return Number(int(self.value or other.value))
+
+    def notted_by(self):
+        return Number(1 if self.value == 0 else 0)
 
 
 class String:
@@ -96,6 +137,24 @@ class String:
 
     def __repr__(self):
         return f'"{self.value}"'.replace('""', '"')
+
+    def __lt__(self, other):
+        return String(self.value < other.value)
+
+    def __le__(self, other):
+        return String(self.value <= other.value)
+
+    def __gt__(self, other):
+        return String(self.value > other.value)
+
+    def __ge__(self, other):
+        return String(self.value >= other.value)
+
+    def __ne__(self, other):
+        return String(self.value != other.value)
+
+    def __eq__(self, other):
+        return String(self.value == other.value)
 
 
 class VarAssignNode:

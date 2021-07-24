@@ -21,6 +21,12 @@ class TokenType(Enum):
     RPAREN = 16
     SEPARATOR = 17
     STRING = 18
+    IS_EQ = 19
+    N_EQ = 20
+    GT = 21
+    LT = 22
+    LTE = 23
+    GTE = 24
 
 
 class Token:
