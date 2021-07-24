@@ -1,8 +1,11 @@
-from ..tokens.token_types import Token
+from ..tokens.token_types import Token, TokenType
+from typing import Union
 
 
 class NumberNode:
-    def __init__(self, tok: Token):
+    """Node for a number created by the parser for the abstract syntax tree"""
+
+    def __init__(self, tok: Token) -> None:
         self.tok = tok
 
     def __repr__(self):
@@ -10,7 +13,9 @@ class NumberNode:
 
 
 class StringNode:
-    def __init__(self, tok):
+    """Node for a string created by the parser for the abstract syntax tree"""
+
+    def __init__(self, tok: Token):
         self.tok = tok
 
     def __repr__(self):
@@ -18,7 +23,15 @@ class StringNode:
 
 
 class BinOpNode:
-    def __init__(self, left_node, operator_token, right_node):
+    """
+    Node for usage of binary operators
+
+    The following binary operators defined in the language right now are:
+    +, -, /, *, ^
+    """
+    def __init__(self, left_node: Union[NumberNode, StringNode, "BinOpNode", "UnaryOpNode",
+                                        "VarAssignNode", "VarAccessNode"], operator_token: TokenType, right_node: Union[NumberNode, StringNode, "BinOpNode",
+                                          "UnaryOpNode", "VarAssignNode", "VarAccessNode"]):
         self.left_node = left_node
         self.op_tok = operator_token
         self.right_node = right_node
@@ -28,7 +41,14 @@ class BinOpNode:
 
 
 class UnaryOpNode:
-    def __init__(self, operator_token, node):
+    """
+    Node for unary operators
+
+    Unary operators are - and + before a number, like -1
+    """
+    def __init__(self, operator_token: TokenType,
+                 node: Union[NumberNode, StringNode, BinOpNode,
+                             "UnaryOpNode", "VarAssignNode", "VarAccessNode"]):
         self.op_tok = operator_token
         self.node = node
 
@@ -37,7 +57,8 @@ class UnaryOpNode:
 
 
 class Number:
-    def __init__(self, value):
+    """Class for the integer and float types in the language, under the Number class"""
+    def __init__(self, value: Union["Number", int, float]):
         if isinstance(value, Number):
             self.value = value.value
         else:
@@ -63,7 +84,8 @@ class Number:
 
 
 class String:
-    def __init__(self, value):
+    """Class for the string type in the language"""
+    def __init__(self, value: str):
         self.value = value
 
     def __add__(self, other):
@@ -77,7 +99,13 @@ class String:
 
 
 class VarAssignNode:
-    def __init__(self, name, value):
+    """
+    Node for the assignment of a variable
+
+    Assignment of a variable syntactically looks like:
+    {name} = {value}
+    """
+    def __init__(self, name: str, value: Union[Number, String]) -> None:
         self.name = name
         self.value = value
 
@@ -86,17 +114,14 @@ class VarAssignNode:
 
 
 class VarAccessNode:
-    def __init__(self, name):
+    """
+    Node for the accessing a variable
+
+    Accessing of a variable syntactically looks like:
+    {name}
+    """
+    def __init__(self, name: str) -> None:
         self.name = name
 
     def __repr__(self):
         return f'{self.name}'
-#
-# class ClassNode:
-#     def __init__(self, name, methods, attributes):
-#         self.name = name
-#         self.methods = methods
-#         self.attributes = attributes
-#
-#     def __repr__(self):
-#         return f'({self.name}, {self.methods}, {self.params})'

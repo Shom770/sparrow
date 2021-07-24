@@ -1,6 +1,8 @@
 from language.lexer.lexer import Lexer
 from language.parser.lang_parser import Parser
 from language.interpreter.lang_interpreter import Interpreter
+from sys import stdout
+
 
 def run():
     text = ''
@@ -17,4 +19,7 @@ def run():
     return interpreted_results
 
 
-print(run())
+result = run()
+# show results line by line
+text_to_return = [str(line_return.value) if line_return else '' for line_return in result]
+stdout.write('\n'.join(text_to_return).strip('\n'))

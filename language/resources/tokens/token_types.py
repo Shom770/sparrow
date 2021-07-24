@@ -2,6 +2,7 @@ from enum import Enum
 
 
 class TokenType(Enum):
+    """An Enum-derived class that defines token types in the language."""
     IDENTIFIER = 1
     KEYWORD = 2
     BLOCK_OPEN = 3
@@ -23,12 +24,10 @@ class TokenType(Enum):
 
 
 class Token:
-    def __init__(self, token_type, value):
+    """The class for tokens, where tokens are created by the lexer and used by the parser to create the nodes."""
+    def __init__(self, token_type: TokenType, value: str) -> None:
         self.token_type = token_type
         self.value = value
-
-    def matches(self, type_, value):
-        return self.type == type_ and self.value == value
 
     def __repr__(self):
         if self.value:

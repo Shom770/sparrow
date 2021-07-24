@@ -1,1 +1,3 @@
-5 + 2
+variable = "hey!"
+ascii = "no."
+variable + ascii

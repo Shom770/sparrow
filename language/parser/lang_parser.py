@@ -1,19 +1,32 @@
-from ..resources.tokens.token_types import TokenType
+from ..resources.tokens.token_types import Token, TokenType
 from ..resources.nodes.nodes import *
+from typing import List
 
 
 class Parser:
-    def __init__(self, tokens):
+    """
+    The class for the parser of the language.
+
+    The parser creates the abstract syntax tree, which essentially has the nodes that the interpreter will use.
+    """
+    def __init__(self, tokens: List[Token]) -> None:
         self.tokens = tokens
         self.pos = -1
         self.current_tok = None
         self.advance()
 
-    def advance(self):
+    def advance(self) -> None:
+        """
+        Goes to the next token in the list of tokens, and sets a current token
+        relative to the position in the list.
+        """
         self.pos += 1
         self.current_tok = self.tokens[self.pos] if self.pos < len(self.tokens) else None
 
-    def parse(self):
+    def parse(self) -> Union[None, List]:
+        """
+        The function used by main.py to parse through the tokens and create the abstract syntax tree.
+        """
         parsing_result = []
         if self.current_tok is None:
             return None
@@ -26,7 +39,13 @@ class Parser:
 
         return parsing_result
 
-    def expr(self):
+    def expr(self) -> Union[BinOpNode, StringNode, NumberNode,
+                            UnaryOpNode, VarAccessNode, VarAssignNode]:
+        """
+        Part of the syntax tree, expression would be the entire part of a certain segment.
+        Mathematically, expression could either be the entire segment or a segment within parentheses,
+        it could also be a certain token.
+        """
         result = self.term()
 
         while self.current_tok is not None and self.current_tok.token_type in (TokenType.PLUS, TokenType.MINUS):
@@ -36,7 +55,12 @@ class Parser:
 
         return result
 
-    def term(self):
+    def term(self) -> Union[BinOpNode, StringNode, NumberNode,
+                            UnaryOpNode, VarAccessNode, VarAssignNode]:
+        """
+        Part of the syntax tree, the term would be a certain operation between two numbers,
+        or can be a certain token.
+        """
         result = self.pow()
         while self.current_tok is not None and self.current_tok.token_type in (TokenType.MULT, TokenType.DIV):
             symbol = self.current_tok
@@ -45,7 +69,12 @@ class Parser:
 
         return result
 
-    def pow(self):
+    def pow(self) -> Union[BinOpNode, StringNode, NumberNode,
+                            UnaryOpNode, VarAccessNode, VarAssignNode]:
+        """
+        This is either used to filter out exponential equations as the top of the order of operations,
+        behind parentheses. However, usually it is a singular token.
+        """
         result = self.factor()
         while self.current_tok is not None and self.current_tok.token_type == TokenType.EXP:
             symbol = self.current_tok
@@ -54,7 +83,12 @@ class Parser:
 
         return result
 
-    def factor(self):
+    def factor(self) -> Union[StringNode, NumberNode,
+                              UnaryOpNode, VarAccessNode, VarAssignNode]:
+        """
+        Part of a syntax tree, this is a certain token or an item (when it comes to unary operations),
+        assignment of nodes will go on in this function.
+        """
         token = self.current_tok
 
         if token.token_type == TokenType.LPAREN:

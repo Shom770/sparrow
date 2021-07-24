@@ -1,4 +1,9 @@
 class SymbolTable:
+    """
+    The symbol table for a certain region.
+
+    Currently, the symbol table is global but that will change soon.
+    """
     def __init__(self):
         self.symbols = {}
         self.parent = None
