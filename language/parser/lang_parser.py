@@ -144,6 +144,53 @@ class Parser:
                     self.advance()
                     return VarAccessNode(token.value)
 
+    def parentheses_logical_expr(self) -> Union[List, bool]:
+        """Helper function for dealing with parenthesized logical expressions"""
+        paren_ran = False
+        other_paren_ran = False
+        if paren_ran:
+            other_paren_ran = True
+        paren_ran = True
+        keyword_in_paren = (False, None)
+        append_to_paren = []
+        paren_cases = []
+        self.advance()
+        while self.current_tok.token_type != TokenType.RPAREN:
+            if self.current_tok.token_type == TokenType.LPAREN:
+                result, paren_ran, other_paren_ran = self.parentheses_logical_expr()
+
+            if self.current_tok.value in ('and', 'or', 'not'):
+                keyword_in_paren = (True, self.current_tok)
+                self.advance()
+            else:
+                if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
+                                                   TokenType.LTE, TokenType.GTE):
+                    self.pos -= 1
+                    self.current_tok = self.tokens[self.pos]
+
+                if not other_paren_ran:
+                    result = self.factor()
+                if self.current_tok.token_type in (
+                        TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
+                        TokenType.LTE, TokenType.GTE, TokenType.PLUS, TokenType.MINUS,
+                        TokenType.MULT, TokenType.DIV, TokenType.EXP):
+                    op_tok = self.current_tok
+                    self.advance()
+                    tok = self.factor()
+                    append_to_paren.append(BinOpNode(result, op_tok, tok))
+                else:
+                    append_to_paren.append(result)
+                if keyword_in_paren[0] is True:
+                    if keyword_in_paren[1].value in ('and', 'or'):
+                        paren_cases.append(BinOpNode(append_to_paren[-2], keyword_in_paren[1],
+                                                     append_to_paren[-1]))
+                    else:
+                        paren_cases.append(UnaryOpNode(keyword_in_paren[1], append_to_paren[-1]))
+                elif keyword_in_paren[0] is False and self.current_tok.value not in ('and', 'or'):
+                    paren_cases.append(append_to_paren[-1])
+                keyword_in_paren = (False, None)
+        return paren_cases, paren_ran, other_paren_ran
+
     def logical_expr(self, block: bool) -> List[tuple]:
         """Helper function for dealing with logical operators"""
         cases = []
@@ -151,7 +198,6 @@ class Parser:
         append_to_cases = []
         conditions = []
         paren_ran = False
-        other_paren_ran = False
         while self.current_tok.token_type != TokenType.BLOCK_OPEN and self.current_tok.token_type != TokenType.NEWLINE:
             if self.current_tok.value in ('and', 'or', 'not'):
                 keyword = (True, self.current_tok)
@@ -163,46 +209,9 @@ class Parser:
                     self.current_tok = self.tokens[self.pos]
 
                 if self.current_tok.token_type == TokenType.LPAREN:
-                    if paren_ran:
-                        other_paren_ran = True
-                    paren_ran = True
-                    keyword_in_paren = (False, None)
-                    append_to_paren = []
-                    paren_cases = []
-
-                    self.advance()
-                    while self.current_tok.token_type != TokenType.RPAREN:
-                        if self.current_tok.value in ('and', 'or', 'not'):
-                            keyword_in_paren = (True, self.current_tok)
-                            self.advance()
-                        else:
-                            if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
-                                                               TokenType.LTE, TokenType.GTE):
-                                self.pos -= 1
-                                self.current_tok = self.tokens[self.pos]
-
-                            if not other_paren_ran:
-                                result = self.factor()
-                            if self.current_tok.token_type in (
-                                                              TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
-                                                              TokenType.LTE, TokenType.GTE, TokenType.PLUS, TokenType.MINUS,
-                                                              TokenType.MULT, TokenType.DIV, TokenType.EXP):
-                                op_tok = self.current_tok
-                                self.advance()
-                                tok = self.factor()
-                                append_to_paren.append(BinOpNode(result, op_tok, tok))
-                            else:
-                                append_to_paren.append(result)
-                            if keyword_in_paren[0] is True:
-                                if keyword_in_paren[1].value in ('and', 'or'):
-                                    paren_cases.append(BinOpNode(append_to_paren[-2], keyword_in_paren[1],
-                                                                     append_to_paren[-1]))
-                                else:
-                                    paren_cases.append(UnaryOpNode(keyword_in_paren[1], append_to_paren[-1]))
-                            elif keyword_in_paren[0] is False and self.current_tok.value not in ('and', 'or'):
-                                paren_cases.append(append_to_paren[-1])
-                            keyword_in_paren = (False, None)
+                    paren_cases, paren_ran, _ = self.parentheses_logical_expr()
                     conditions.append(paren_cases)
+
                 if self.current_tok.token_type != TokenType.BLOCK_OPEN:
                     if self.current_tok.token_type == TokenType.RPAREN:
                         self.advance()
