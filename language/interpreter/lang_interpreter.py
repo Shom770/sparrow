@@ -13,6 +13,9 @@ class Interpreter:
 
     def __init__(self) -> None:
         self.symbol_table = SymbolTable()
+        self.symbol_table["true"] = Number(1)
+        self.symbol_table["false"] = Number(0)
+        self.symbol_table["null"] = Number(0)
 
     def visit(self, node: Union[NumberNode, BinOpNode, StringNode, UnaryOpNode,
                                 VarAssignNode, VarAccessNode]) -> Union[Number, String]:
@@ -74,7 +77,7 @@ class Interpreter:
             elif node.op_tok.value == 'and':
                 return Number(self.visit(node.left_node)).anded_by(self.visit(node.right_node))
             elif node.op_tok.value == 'or':
-                return Number(self.visit(node.left_node)).anded_by(self.visit(node.right_node))
+                return Number(self.visit(node.left_node)).ored_by(self.visit(node.right_node))
 
         elif type(self.visit(node.left_node)).__name__ == 'String' and \
                 type(self.visit(node.right_node)).__name__ == 'String':
@@ -83,17 +86,17 @@ class Interpreter:
             elif node.op_tok.token_type == TokenType.MINUS:
                 return String(self.visit(node.left_node)) - String(self.visit(node.right_node))
             elif node.op_tok.token_type == TokenType.N_EQ:
-                return String(self.visit(node.left_node) != self.visit(node.right_node))
+                return Number(self.visit(node.left_node) != self.visit(node.right_node))
             elif node.op_tok.token_type == TokenType.IS_EQ:
-                return String(self.visit(node.left_node) == self.visit(node.right_node))
+                return Number(self.visit(node.left_node) == self.visit(node.right_node))
             elif node.op_tok.token_type == TokenType.LTE:
-                return String(self.visit(node.left_node) <= self.visit(node.right_node))
+                return Number(self.visit(node.left_node) <= self.visit(node.right_node))
             elif node.op_tok.token_type == TokenType.GTE:
-                return String(self.visit(node.left_node) >= self.visit(node.right_node))
+                return Number(self.visit(node.left_node) >= self.visit(node.right_node))
             elif node.op_tok.token_type == TokenType.LT:
-                return String(self.visit(node.left_node) < self.visit(node.right_node))
+                return Number(self.visit(node.left_node) < self.visit(node.right_node))
             elif node.op_tok.token_type == TokenType.GT:
-                return String(self.visit(node.left_node) > self.visit(node.right_node))
+                return Number(self.visit(node.left_node) > self.visit(node.right_node))
 
         elif (type(self.visit(node.left_node)).__name__ == 'String' and \
                 isinstance(self.visit(node.right_node).value, int)) or \
@@ -136,6 +139,17 @@ class Interpreter:
         VarAccessNode is a node class used for getting the value of a certain variable, denoted by 'identifier'.
         """
         return self.symbol_table[node.name]
+
+    def visit_list(self, list_to_visit: list) -> Number:
+        passed_cases = []
+        for node in list_to_visit:
+            result = self.visit(node)
+            passed_cases.append(result)
+
+        if False in [num.value == 1 for num in passed_cases]:
+            return self.symbol_table["false"]
+        else:
+            return self.symbol_table["true"]
 
     def visit_IfNode(self, node: IfNode) -> List:
         """

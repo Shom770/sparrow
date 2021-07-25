@@ -1,13 +1,6 @@
-if 2 <= 3 or 3 >= 2 and 4 <= 5 {
-a = 5
-b = 2 + 2
+a = "hey"
+b = "nah bruh"
+if 1 or 1 and not 0 {
+c = 2
 }
-elif 2 <= 3 >= 5{
-    d = 2 + 2
-}
-else {
-    c = 2 + 3
-    d = 5
-}
-a
-b
+c

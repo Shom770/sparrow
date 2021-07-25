@@ -13,6 +13,7 @@ class Parser:
         self.tokens = tokens
         self.pos = -1
         self.current_tok = None
+        self.called = False
         self.advance()
 
     def advance(self) -> None:
@@ -95,51 +96,62 @@ class Parser:
         """
         token = self.current_tok
 
-        if token.token_type == TokenType.KEYWORD and token.value == 'if':
-            self.advance()
-            result = self.if_expr(main_func=True)
-            return result
-        if token.token_type == TokenType.LPAREN:
-            self.advance()
-            result = self.expr()
-
-            self.advance()
-            return result
-
-        if token.token_type == TokenType.BLOCK_CLOSE:
-            self.advance()
-
-        if token.token_type == TokenType.STRING:
-            self.advance()
-            return StringNode(token)
-
-        if token.token_type == TokenType.IDENTIFIER:
-            if self.tokens[self.pos + 1].token_type == TokenType.EQ:
+        if token is not None:
+            if token.token_type == TokenType.KEYWORD and token.value == 'if':
                 self.advance()
+                result = self.if_expr(main_func=True)
+                return result
+            if token.token_type == TokenType.LPAREN:
                 self.advance()
                 result = self.expr()
-                return VarAssignNode(token.value, result)
-            elif self.tokens[self.pos + 1].token_type != TokenType.EQ:
+
                 self.advance()
-                return VarAccessNode(token.value)
+                return result
 
-        elif token.token_type in (TokenType.INT, TokenType.FLOAT):
-            self.advance()
-            return NumberNode(token)
+            if token.token_type == TokenType.BLOCK_CLOSE:
+                self.advance()
 
-        elif token.token_type in (TokenType.PLUS, TokenType.MINUS) or token.value == 'not':
-            self.advance()
-            return UnaryOpNode(token, self.factor())
+            if token.token_type == TokenType.STRING:
+                self.advance()
+                return StringNode(token)
 
-    def if_expr(self, main_func: bool) -> IfNode:
-        """Expression used for if statements in the language"""
+            elif token.token_type in (TokenType.INT, TokenType.FLOAT):
+                self.advance()
+                return NumberNode(token)
+
+            elif token.token_type in (TokenType.PLUS, TokenType.MINUS) or token.value == 'not':
+                self.advance()
+                return UnaryOpNode(token, self.factor())
+
+            elif self.pos + 1 < len(self.tokens):
+                if (self.tokens[self.pos + 1].token_type in
+                    (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT,
+                    TokenType.LT, TokenType.GTE, TokenType.LTE) or
+                        self.tokens[self.pos + 1].value in ('and', 'or')) and \
+                        not self.called:
+                    self.called = True
+                    result = self.logical_expr(block=False)
+                    self.called = False
+                    return result
+
+            if token.token_type == TokenType.IDENTIFIER:
+                if self.tokens[self.pos + 1].token_type == TokenType.EQ:
+                    self.advance()
+                    self.advance()
+                    result = self.expr()
+                    return VarAssignNode(token.value, result)
+                elif self.tokens[self.pos + 1].token_type != TokenType.EQ:
+                    self.advance()
+                    return VarAccessNode(token.value)
+
+    def logical_expr(self, block: bool) -> List[tuple]:
+        """Helper function for dealing with logical operators"""
         cases = []
+        keyword = (False, None)
         append_to_cases = []
         conditions = []
-        else_result = None
-        keyword = (False, None)
-        while self.current_tok.token_type != TokenType.BLOCK_OPEN:
-            if self.current_tok.value in ('and', 'or'):
+        while self.current_tok.token_type != TokenType.BLOCK_OPEN and self.current_tok.token_type != TokenType.NEWLINE:
+            if self.current_tok.value in ('and', 'or', 'not'):
                 keyword = (True, self.current_tok)
                 self.advance()
             else:
@@ -147,28 +159,86 @@ class Parser:
                                                    TokenType.LTE, TokenType.GTE):
                     self.pos -= 1
                     self.current_tok = self.tokens[self.pos]
-                result = self.factor()
-                op_tok = self.current_tok
-                self.advance()
-                tok = self.factor()
-                conditions.append(BinOpNode(result, op_tok, tok))
+
+                if self.current_tok.token_type == TokenType.LPAREN:
+                    keyword_in_paren = (False, None)
+                    while self.current_tok.token_type != TokenType.RPAREN:
+                        if self.current_tok.value in ('and', 'or', 'not'):
+                            keyword_in_paren = (True, self.current_tok)
+                            self.advance()
+                        else:
+                            if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
+                                                               TokenType.LTE, TokenType.GTE):
+                                self.pos -= 1
+                                self.current_tok = self.tokens[self.pos]
+
+                            result = self.factor()
+
+                            if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
+                                                               TokenType.LTE, TokenType.GTE):
+                                op_tok = self.current_tok
+                                self.advance()
+                                tok = self.factor()
+                                conditions.append(BinOpNode(result, op_tok, tok))
+                            else:
+                                conditions.append(result)
+                            if keyword_in_paren[0] is True:
+                                if keyword_in_paren[1].value in ('and', 'or'):
+                                    append_to_cases.append(BinOpNode(conditions[-2], keyword_in_paren[1],
+                                                                     conditions[-1]))
+                                else:
+                                    append_to_cases.append(UnaryOpNode(keyword_in_paren[1], conditions[-1]))
+                            elif keyword_in_paren[0] is False and self.current_tok.value not in ('and', 'or'):
+                                append_to_cases.append(conditions[-1])
+                            keyword_in_paren = (False, None)
+
+                if self.current_tok.token_type != TokenType.BLOCK_OPEN:
+                    if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
+                                                       TokenType.LTE, TokenType.GTE):
+                        self.pos -= 1
+                        self.current_tok = self.tokens[self.pos]
+                    result = self.factor()
+                    if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
+                                                       TokenType.LTE, TokenType.GTE):
+                        op_tok = self.current_tok
+                        self.advance()
+                        tok = self.factor()
+                        conditions.append(BinOpNode(result, op_tok, tok))
+                    else:
+                        conditions.append(result)
                 if keyword[0] is True:
-                    append_to_cases.append(BinOpNode(conditions[-2], keyword[1],
-                                                     conditions[-1]))
+                    if keyword[1].value in ('and', 'or'):
+                        append_to_cases.append(BinOpNode(conditions[-2], keyword[1],
+                                                         conditions[-1]))
+                    else:
+                        append_to_cases.append(UnaryOpNode(keyword[1], conditions[-1]))
                 elif keyword[0] is False and self.current_tok.value not in ('and', 'or'):
                     append_to_cases.append(conditions[-1])
                 keyword = (False, None)
 
+        if block:
+            expr_results = []
+            self.advance()
+            while self.current_tok.token_type != TokenType.BLOCK_CLOSE:
+                result = self.expr()
+                if self.current_tok.token_type == TokenType.NEWLINE:
+                    self.advance()
+                expr_results.append(result)
+            cases.append((append_to_cases, expr_results))
+        else:
+            cases.append(*append_to_cases)
+
+        return cases
+
         self.advance()
 
-        expr_results = []
-        while self.current_tok.token_type != TokenType.BLOCK_CLOSE:
-            result = self.expr()
-            if self.current_tok.token_type == TokenType.NEWLINE:
-                self.advance()
-            expr_results.append(result)
+    def if_expr(self, main_func: bool) -> IfNode:
+        """Expression used for if statements in the language"""
+        else_result = None
+        self.called = True
+        cases = self.logical_expr(block=True)
+        self.called = False
 
-        cases.append((append_to_cases, expr_results))
         self.advance()
         if self.current_tok.token_type == TokenType.NEWLINE:
             self.advance()
