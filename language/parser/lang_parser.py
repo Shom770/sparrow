@@ -151,6 +151,7 @@ class Parser:
         append_to_cases = []
         conditions = []
         while self.current_tok.token_type != TokenType.BLOCK_OPEN and self.current_tok.token_type != TokenType.NEWLINE:
+            print(self.current_tok)
             if self.current_tok.value in ('and', 'or', 'not'):
                 keyword = (True, self.current_tok)
                 self.advance()
@@ -162,6 +163,10 @@ class Parser:
 
                 if self.current_tok.token_type == TokenType.LPAREN:
                     keyword_in_paren = (False, None)
+                    append_to_paren = []
+                    paren_cases = []
+
+                    self.advance()
                     while self.current_tok.token_type != TokenType.RPAREN:
                         if self.current_tok.value in ('and', 'or', 'not'):
                             keyword_in_paren = (True, self.current_tok)
@@ -173,24 +178,25 @@ class Parser:
                                 self.current_tok = self.tokens[self.pos]
 
                             result = self.factor()
-
                             if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
                                                                TokenType.LTE, TokenType.GTE):
                                 op_tok = self.current_tok
                                 self.advance()
                                 tok = self.factor()
-                                conditions.append(BinOpNode(result, op_tok, tok))
+                                append_to_paren.append(BinOpNode(result, op_tok, tok))
                             else:
-                                conditions.append(result)
+                                append_to_paren.append(result)
                             if keyword_in_paren[0] is True:
                                 if keyword_in_paren[1].value in ('and', 'or'):
-                                    append_to_cases.append(BinOpNode(conditions[-2], keyword_in_paren[1],
-                                                                     conditions[-1]))
+                                    paren_cases.append(BinOpNode(append_to_paren[-2], keyword_in_paren[1],
+                                                                     append_to_paren[-1]))
                                 else:
-                                    append_to_cases.append(UnaryOpNode(keyword_in_paren[1], conditions[-1]))
+                                    paren_cases.append(UnaryOpNode(keyword_in_paren[1], append_to_paren[-1]))
                             elif keyword_in_paren[0] is False and self.current_tok.value not in ('and', 'or'):
-                                append_to_cases.append(conditions[-1])
+                                paren_cases.append(append_to_paren[-1])
                             keyword_in_paren = (False, None)
+                    self.advance()
+                    conditions.append(paren_cases)
 
                 if self.current_tok.token_type != TokenType.BLOCK_OPEN:
                     if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
@@ -215,6 +221,7 @@ class Parser:
                 elif keyword[0] is False and self.current_tok.value not in ('and', 'or'):
                     append_to_cases.append(conditions[-1])
                 keyword = (False, None)
+                print(conditions)
 
         if block:
             expr_results = []

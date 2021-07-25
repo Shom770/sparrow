@@ -1,6 +1,6 @@
 a = "hey"
 b = "nah bruh"
-if 1 or 1 and not 0 {
+if 2 > 3 or (3 >= 3 and 5 > 3 or 5 >= 6) {
 c = 2
 }
 c
