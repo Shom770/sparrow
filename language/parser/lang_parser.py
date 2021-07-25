@@ -150,6 +150,8 @@ class Parser:
         keyword = (False, None)
         append_to_cases = []
         conditions = []
+        paren_ran = False
+        other_paren_ran = False
         while self.current_tok.token_type != TokenType.BLOCK_OPEN and self.current_tok.token_type != TokenType.NEWLINE:
             if self.current_tok.value in ('and', 'or', 'not'):
                 keyword = (True, self.current_tok)
@@ -161,6 +163,9 @@ class Parser:
                     self.current_tok = self.tokens[self.pos]
 
                 if self.current_tok.token_type == TokenType.LPAREN:
+                    if paren_ran:
+                        other_paren_ran = True
+                    paren_ran = True
                     keyword_in_paren = (False, None)
                     append_to_paren = []
                     paren_cases = []
@@ -176,9 +181,12 @@ class Parser:
                                 self.pos -= 1
                                 self.current_tok = self.tokens[self.pos]
 
-                            result = self.factor()
-                            if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
-                                                               TokenType.LTE, TokenType.GTE):
+                            if not other_paren_ran:
+                                result = self.factor()
+                            if self.current_tok.token_type in (
+                                                              TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
+                                                              TokenType.LTE, TokenType.GTE, TokenType.PLUS, TokenType.MINUS,
+                                                              TokenType.MULT, TokenType.DIV, TokenType.EXP):
                                 op_tok = self.current_tok
                                 self.advance()
                                 tok = self.factor()
@@ -194,23 +202,28 @@ class Parser:
                             elif keyword_in_paren[0] is False and self.current_tok.value not in ('and', 'or'):
                                 paren_cases.append(append_to_paren[-1])
                             keyword_in_paren = (False, None)
-                    self.advance()
                     conditions.append(paren_cases)
-
                 if self.current_tok.token_type != TokenType.BLOCK_OPEN:
+                    if self.current_tok.token_type == TokenType.RPAREN:
+                        self.advance()
                     if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
-                                                       TokenType.LTE, TokenType.GTE):
+                                                       TokenType.LTE, TokenType.GTE) and self.tokens[self.pos - 1] in \
+                            (TokenType.IDENTIFIER, TokenType.INT, TokenType.FLOAT, TokenType.STRING):
                         self.pos -= 1
                         self.current_tok = self.tokens[self.pos]
-                    result = self.factor()
+                    if not paren_ran:
+                        result = self.factor()
                     if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
-                                                       TokenType.LTE, TokenType.GTE):
+                                                       TokenType.LTE, TokenType.GTE, TokenType.PLUS, TokenType.MINUS,
+                                                       TokenType.MULT, TokenType.DIV, TokenType.EXP):
                         op_tok = self.current_tok
                         self.advance()
                         tok = self.factor()
-                        conditions.append(BinOpNode(result, op_tok, tok))
+                        conditions.append(BinOpNode(result if not paren_ran else conditions[-1], op_tok, tok))
                     else:
-                        conditions.append(result)
+                        if not paren_ran:
+                            conditions.append(result)
+                    paren_ran = False
                 if keyword[0] is True:
                     if keyword[1].value in ('and', 'or'):
                         append_to_cases.append(BinOpNode(conditions[-2], keyword[1],
