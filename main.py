@@ -14,7 +14,6 @@ def run():
     tokens = lexer.tokenize()
     parser = Parser(tokens)
     ast = parser.parse()
-    print(ast)
     interpreter = Interpreter()
     interpreted_results = [interpreter.visit(to_parse) for to_parse in ast]
     return interpreted_results

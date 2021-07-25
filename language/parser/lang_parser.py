@@ -151,7 +151,6 @@ class Parser:
         append_to_cases = []
         conditions = []
         while self.current_tok.token_type != TokenType.BLOCK_OPEN and self.current_tok.token_type != TokenType.NEWLINE:
-            print(self.current_tok)
             if self.current_tok.value in ('and', 'or', 'not'):
                 keyword = (True, self.current_tok)
                 self.advance()
@@ -221,7 +220,6 @@ class Parser:
                 elif keyword[0] is False and self.current_tok.value not in ('and', 'or'):
                     append_to_cases.append(conditions[-1])
                 keyword = (False, None)
-                print(conditions)
 
         if block:
             expr_results = []
