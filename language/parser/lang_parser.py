@@ -146,11 +146,9 @@ class Parser:
 
     def parentheses_logical_expr(self) -> Union[List, bool]:
         """Helper function for dealing with parenthesized logical expressions"""
-        paren_ran = False
-        other_paren_ran = False
-        if paren_ran:
-            other_paren_ran = True
         paren_ran = True
+        other_paren_ran = False
+        premature_token = False
         keyword_in_paren = (False, None)
         append_to_paren = []
         paren_cases = []
@@ -158,6 +156,7 @@ class Parser:
         while self.current_tok.token_type != TokenType.RPAREN:
             if self.current_tok.token_type == TokenType.LPAREN:
                 result, paren_ran, other_paren_ran = self.parentheses_logical_expr()
+                other_paren_ran = True
 
             if self.current_tok.value in ('and', 'or', 'not'):
                 keyword_in_paren = (True, self.current_tok)
@@ -165,10 +164,10 @@ class Parser:
             else:
                 if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
                                                    TokenType.LTE, TokenType.GTE):
-                    self.pos -= 1
-                    self.current_tok = self.tokens[self.pos]
+                    premature_token = True
+                    result = append_to_paren[-1]
 
-                if not other_paren_ran:
+                if not other_paren_ran and not premature_token:
                     result = self.factor()
                 if self.current_tok.token_type in (
                         TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
@@ -196,6 +195,7 @@ class Parser:
         cases = []
         keyword = (False, None)
         append_to_cases = []
+        premature_token = False
         conditions = []
         paren_ran = False
         while self.current_tok.token_type != TokenType.BLOCK_OPEN and self.current_tok.token_type != TokenType.NEWLINE:
@@ -205,12 +205,13 @@ class Parser:
             else:
                 if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
                                                    TokenType.LTE, TokenType.GTE):
-                    self.pos -= 1
-                    self.current_tok = self.tokens[self.pos]
+                    result = conditions[-1]
+                    premature_token = True
 
                 if self.current_tok.token_type == TokenType.LPAREN:
                     paren_cases, paren_ran, _ = self.parentheses_logical_expr()
-                    conditions.append(paren_cases)
+                    for res in paren_cases:
+                        conditions.append(res)
 
                 if self.current_tok.token_type != TokenType.BLOCK_OPEN:
                     if self.current_tok.token_type == TokenType.RPAREN:
@@ -220,7 +221,7 @@ class Parser:
                             (TokenType.IDENTIFIER, TokenType.INT, TokenType.FLOAT, TokenType.STRING):
                         self.pos -= 1
                         self.current_tok = self.tokens[self.pos]
-                    if not paren_ran:
+                    if not paren_ran and not premature_token:
                         result = self.factor()
                     if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
                                                        TokenType.LTE, TokenType.GTE, TokenType.PLUS, TokenType.MINUS,
@@ -242,6 +243,7 @@ class Parser:
                 elif keyword[0] is False and self.current_tok.value not in ('and', 'or'):
                     append_to_cases.append(conditions[-1])
                 keyword = (False, None)
+                premature_token = False
 
         if block:
             expr_results = []
