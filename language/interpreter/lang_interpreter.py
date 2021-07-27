@@ -141,6 +141,10 @@ class Interpreter:
         return self.symbol_table[node.name]
 
     def visit_list(self, list_to_visit: list) -> Number:
+        """
+        The visit_list method is for visiting logical expressions,
+        containing things like <, >, <=, >=, and, or, not, etc.
+        """
         passed_cases = []
         for node in list_to_visit:
             result = self.visit(node)

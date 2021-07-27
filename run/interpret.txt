@@ -1,9 +1,8 @@
-a = 2
-b = 5
-if a - b == -3 {
-c = 1
+is_jeffrey_stupid = true
+if not is_jeffrey_stupid {
+    result = "please stop capping lmao jit trippen rofl!!"
 }
 else {
-c = 2
+    result = "omg so true speaking facts!!"
 }
-c
+result

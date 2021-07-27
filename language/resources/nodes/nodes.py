@@ -41,6 +41,41 @@ class BinOpNode:
         return f'({self.left_node}, {self.op_tok}, {self.right_node})'
 
 
+class ForNode:
+    """
+    Node of for loops
+    for loops are syntactically defined as:
+    for (identifier, start value (default 0), end value, step (default 1) {
+    body
+    }
+    """
+    def __init__(self, var_name: "VarAssignNode", start_value: int = 0, *, end_value: int, step_value: int = 1,  body: list):
+        self.var_name = var_name
+        self.start_value = start_value
+        self.end_value = end_value
+        self.step_value = step_value
+        self.body = body
+
+    def __repr__(self):
+        return f'({self.var_name}, {self.start_value}, {self.end_value}, {self.step_value})'
+
+
+class WhileNode:
+    """
+    Node for while loops
+    while loops are syntactically defined as:
+    while condition {
+    body
+    }
+    """
+    def __init__(self, cond: list, body: list):
+        self.cond = cond
+        self.body = body
+
+    def __repr__(self):
+        return f'({self.cond}, {self.body})'
+
+
 class UnaryOpNode:
     """
     Node for unary operators
@@ -155,6 +190,8 @@ class String:
 
     def __eq__(self, other):
         return Number(self.value == other.value)
+
+
 
 
 class VarAssignNode:

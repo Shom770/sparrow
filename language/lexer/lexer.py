@@ -1,7 +1,7 @@
 from ..resources.tokens.token_types import TokenType, Token
 from string import ascii_letters
 
-KEYWORDS = ['define', 'cls', 'give', 'if', 'elif', 'else', 'and', 'or', 'not']
+KEYWORDS = ['define', 'cls', 'give', 'if', 'elif', 'else', 'and', 'or', 'not', 'for', 'while']
 LETTERS_DIGITS = ascii_letters + '0123456789'
 
 
