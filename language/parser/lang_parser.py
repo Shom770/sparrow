@@ -98,6 +98,11 @@ class Parser:
         token = self.current_tok
 
         if token is not None:
+            if token.token_type == TokenType.KEYWORD and token.value == 'for':
+                self.advance()
+                result = self.for_expr()
+                return result
+
             if token.token_type == TokenType.KEYWORD and token.value == 'if':
                 self.advance()
                 result = self.if_expr(main_func=True)
@@ -311,3 +316,34 @@ class Parser:
             return IfNode(cases, else_case=else_result)
         else:
             return cases
+
+    def for_expr(self) -> ForNode:
+        """Function for defining the node of for loops"""
+        # advance past the parentheses
+        self.advance()
+        if self.current_tok.token_type == TokenType.IDENTIFIER:
+            var_name = VarAssignNode(self.current_tok.value, NumberNode(self.tokens[self.pos + 2]))
+        self.advance()
+        self.advance()
+        start_value = int(self.current_tok.value)
+        self.advance()
+        self.advance()
+        end_value = int(self.current_tok.value)
+        self.advance()
+        if self.tokens[self.pos + 1].token_type == TokenType.INT:
+            self.advance()
+            step_value = int(self.current_tok.value)
+            self.advance()
+        else:
+            step_value = 1
+        self.advance()
+        body = []
+        self.advance()
+        while self.current_tok.token_type != TokenType.BLOCK_CLOSE:
+            result = self.expr()
+            if self.current_tok.token_type == TokenType.NEWLINE:
+                self.advance()
+            body.append(result)
+        self.advance()
+
+        return ForNode(var_name, start_value, end_value, step_value, body)

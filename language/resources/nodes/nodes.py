@@ -49,7 +49,7 @@ class ForNode:
     body
     }
     """
-    def __init__(self, var_name: "VarAssignNode", start_value: int = 0, *, end_value: int, step_value: int = 1,  body: list):
+    def __init__(self, var_name: "VarAssignNode", start_value: int, end_value: int, step_value: int, body: list):
         self.var_name = var_name
         self.start_value = start_value
         self.end_value = end_value
@@ -57,7 +57,7 @@ class ForNode:
         self.body = body
 
     def __repr__(self):
-        return f'({self.var_name}, {self.start_value}, {self.end_value}, {self.step_value})'
+        return f'({self.var_name}, {self.start_value}, {self.end_value}, {self.step_value})\nbody: {self.body}'
 
 
 class WhileNode:

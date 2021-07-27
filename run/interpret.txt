@@ -1,8 +1,10 @@
-is_jeffrey_stupid = true
-if not is_jeffrey_stupid {
-    result = "please stop capping lmao jit trippen rofl!!"
+result = 0
+for (var, 0, 10, 2) {
+if var < 5 {
+result = result + var
 }
 else {
-    result = "omg so true speaking facts!!"
+result = result - 1
+}
 }
 result

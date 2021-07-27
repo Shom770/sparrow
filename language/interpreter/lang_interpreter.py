@@ -28,6 +28,25 @@ class Interpreter:
         """Raised when the visit method is not specified for a certain node."""
         raise Exception(f'No visit_{type(node).__name__} method defined.')
 
+    def visit_ForNode(self, node: ForNode) -> None:
+        node_var = self.visit(node.var_name)
+        node_var = VarAccessNode(node.var_name.name)
+        end_value = node.end_value
+        body = node.body
+        step_value = node.step_value
+        check = node.start_value
+        if step_value > 0:
+            condition = lambda: check < end_value
+        else:
+            condition = lambda: check > end_value
+
+        while condition() is True:
+            for expr in body:
+                if expr is not None:
+                    self.visit(expr)
+            self.symbol_table[node_var.name] += Number(step_value)
+            check += step_value
+
     def visit_NumberNode(self, node: NumberNode) -> String:
         """
         Returns a Number class from NumberNode
@@ -99,7 +118,7 @@ class Interpreter:
                 return Number(self.visit(node.left_node) > self.visit(node.right_node))
 
         elif (type(self.visit(node.left_node)).__name__ == 'String' and \
-                isinstance(self.visit(node.right_node).value, int)) or \
+              isinstance(self.visit(node.right_node).value, int)) or \
                 type(self.visit(node.right_node)).__name__ == 'String' and \
                 isinstance(self.visit(node.left_node).value, int):
             if node.op_tok.token_type == TokenType.MULT:
