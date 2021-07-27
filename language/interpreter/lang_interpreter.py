@@ -2,6 +2,7 @@ from ..resources.tokens.token_types import TokenType
 from ..resources.symbol_table.symbol_table import SymbolTable
 from ..resources.nodes.nodes import *
 from typing import Union
+from time import sleep
 
 
 class Interpreter:
@@ -28,7 +29,30 @@ class Interpreter:
         """Raised when the visit method is not specified for a certain node."""
         raise Exception(f'No visit_{type(node).__name__} method defined.')
 
+    def visit_WhileNode(self, node: WhileNode) -> None:
+        """
+        Executes code within while loop.
+
+        WhileNode is a class interpreted by this function which will be checking a condition and run
+        code within the block while under that certain condition.
+        """
+        while True:
+            if self.visit(node.cond).value == 0:
+                break
+            else:
+                for expr in node.body:
+                    if expr is not None:
+                        self.visit(expr)
+
+
     def visit_ForNode(self, node: ForNode) -> None:
+        """
+        Executes code within the for loop.
+
+        ForNode is a class interpreted by this function which sets forth the guidelines
+        for said for loop.
+        """
+        # initializing node_var
         node_var = self.visit(node.var_name)
         node_var = VarAccessNode(node.var_name.name)
         end_value = node.end_value

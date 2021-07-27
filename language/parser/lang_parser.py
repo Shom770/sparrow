@@ -103,6 +103,11 @@ class Parser:
                 result = self.for_expr()
                 return result
 
+            if token.token_type == TokenType.KEYWORD and token.value == 'while':
+                self.advance()
+                result = self.while_expr()
+                return result
+
             if token.token_type == TokenType.KEYWORD and token.value == 'if':
                 self.advance()
                 result = self.if_expr(main_func=True)
@@ -347,3 +352,18 @@ class Parser:
         self.advance()
 
         return ForNode(var_name, start_value, end_value, step_value, body)
+
+    def while_expr(self) -> WhileNode:
+        """Function for while loops"""
+        cond = self.logical_expr(block=False)
+        self.advance()
+        body = []
+        self.advance()
+        while self.current_tok.token_type != TokenType.BLOCK_CLOSE:
+            result = self.expr()
+            if self.current_tok.token_type == TokenType.NEWLINE:
+                self.advance()
+            body.append(result)
+        self.advance()
+
+        return WhileNode(cond, body)
