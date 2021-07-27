@@ -2,8 +2,6 @@ from ..resources.tokens.token_types import TokenType
 from ..resources.symbol_table.symbol_table import SymbolTable
 from ..resources.nodes.nodes import *
 from typing import Union
-from time import sleep
-
 
 class Interpreter:
     """
