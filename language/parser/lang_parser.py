@@ -9,6 +9,7 @@ class Parser:
 
     The parser creates the abstract syntax tree, which essentially has the nodes that the interpreter will use.
     """
+
     def __init__(self, tokens: List[Token]) -> None:
         self.tokens = tokens
         self.pos = -1
@@ -75,7 +76,7 @@ class Parser:
         return result
 
     def pow(self) -> Union[BinOpNode, StringNode, NumberNode,
-                            UnaryOpNode, VarAccessNode, VarAssignNode]:
+                           UnaryOpNode, VarAccessNode, VarAssignNode]:
         """
         This is either used to filter out exponential equations as the top of the order of operations,
         behind parentheses. However, usually it is a singular token.
@@ -126,8 +127,8 @@ class Parser:
             elif self.pos + 1 < len(self.tokens):
                 if (self.tokens[self.pos + 1].token_type in
                     (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT,
-                    TokenType.LT, TokenType.GTE, TokenType.LTE) or
-                        self.tokens[self.pos + 1].value in ('and', 'or')) and \
+                     TokenType.LT, TokenType.GTE, TokenType.LTE) or
+                    self.tokens[self.pos + 1].value in ('and', 'or')) and \
                         not self.called:
                     self.called = True
                     result = self.logical_expr(block=False)
@@ -163,9 +164,17 @@ class Parser:
                 self.advance()
             else:
                 if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
-                                                   TokenType.LTE, TokenType.GTE):
-                    premature_token = True
-                    result = append_to_paren[-1]
+                                                   TokenType.LTE, TokenType.GTE, TokenType.PLUS, TokenType.MINUS,
+                                                   TokenType.DIV, TokenType.MULT, TokenType.EXP):
+                    if not (self.tokens[self.pos + 1].token_type in (
+                            TokenType.INT, TokenType.IDENTIFIER, TokenType.STRING,
+                            TokenType.FLOAT) and
+                            self.tokens[self.pos - 1].token_type not in (
+                                    TokenType.INT, TokenType.IDENTIFIER, TokenType.STRING,
+                                    TokenType.FLOAT)):
+                        premature_token = True
+                        result = append_to_paren[-1]
+                        paren_cases.remove(result)
 
                 if not other_paren_ran and not premature_token:
                     result = self.factor()
@@ -204,9 +213,17 @@ class Parser:
                 self.advance()
             else:
                 if self.current_tok.token_type in (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT, TokenType.LT,
-                                                   TokenType.LTE, TokenType.GTE):
-                    result = conditions[-1]
-                    premature_token = True
+                                                   TokenType.LTE, TokenType.GTE, TokenType.PLUS, TokenType.MINUS,
+                                                   TokenType.DIV, TokenType.MULT, TokenType.EXP):
+                    if not (self.tokens[self.pos + 1].token_type in (
+                            TokenType.INT, TokenType.IDENTIFIER, TokenType.STRING,
+                            TokenType.FLOAT) and
+                            self.tokens[self.pos - 1].token_type not in (
+                                    TokenType.INT, TokenType.IDENTIFIER, TokenType.STRING,
+                                    TokenType.FLOAT)):
+                        result = conditions[-1]
+                        append_to_cases.remove(result)
+                        premature_token = True
 
                 if self.current_tok.token_type == TokenType.LPAREN:
                     paren_cases, paren_ran, _ = self.parentheses_logical_expr()
