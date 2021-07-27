@@ -365,5 +365,4 @@ class Parser:
                 self.advance()
             body.append(result)
         self.advance()
-
         return WhileNode(cond, body)

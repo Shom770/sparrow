@@ -1,5 +1,6 @@
 from ..tokens.token_types import Token, TokenType
 from typing import Union, List
+from ..symbol_table.symbol_table import SymbolTable
 
 
 class NumberNode:
@@ -39,6 +40,38 @@ class BinOpNode:
 
     def __repr__(self):
         return f'({self.left_node}, {self.op_tok}, {self.right_node})'
+
+
+class FunctionNode:
+    """
+    Node for the definition of a function.
+    Defining a function is syntactically defined as:
+    define {function_name}(param, param2) {
+        # code goes here
+    }
+    """
+    def __init__(self, func_name: str, params: list, body: list):
+        self.func_name = func_name
+        self.params = params
+        self.body = body
+        self.local_symbol_table = SymbolTable()
+
+    def __repr__(self):
+        return f'(name: {self.func_name}, params: {self.params}, body: {self.body})'
+
+
+class FunctionCallNode:
+    """
+    Node for calling a function.
+    Calling a function is syntactically defined as:
+    {function_name}({params})
+    """
+    def __init__(self, func_name: str, params: list):
+        self.func_name = func_name
+        self.params = params
+
+    def __repr__(self):
+        return f'{self.func_name}({self.params})'
 
 
 class ForNode:

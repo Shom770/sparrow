@@ -2,7 +2,6 @@ from language.lexer.lexer import Lexer
 from language.parser.lang_parser import Parser
 from language.interpreter.lang_interpreter import Interpreter
 from sys import stdout
-from time import perf_counter
 
 
 def run():
