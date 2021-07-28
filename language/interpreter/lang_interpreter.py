@@ -1,7 +1,7 @@
 from ..resources.tokens.token_types import TokenType
 from ..resources.symbol_table.symbol_table import SymbolTable
 from ..resources.nodes.nodes import *
-from typing import Union
+from typing import Union, Optional
 
 class Interpreter:
     """
@@ -17,17 +17,44 @@ class Interpreter:
         self.symbol_table["null"] = Number(0)
 
     def visit(self, node: Union[NumberNode, BinOpNode, StringNode, UnaryOpNode,
-                                VarAssignNode, VarAccessNode]) -> Union[Number, String]:
+                                VarAssignNode, VarAccessNode], symbol_table: Optional[SymbolTable] = None) -> Union[Number, String]:
         """Visits node inputted with the functions below."""
         method_name = f'visit_{type(node).__name__}'
         method = getattr(self, method_name, self.no_visit_method)
-        return method(node)
+        if symbol_table is None:
+            symbol_table = self.symbol_table
+        return method(node, symbol_table)
 
-    def no_visit_method(self, node: None):
+    def no_visit_method(self, node: None, symbol_table: SymbolTable):
         """Raised when the visit method is not specified for a certain node."""
         raise Exception(f'No visit_{type(node).__name__} method defined.')
 
-    def visit_WhileNode(self, node: WhileNode) -> None:
+    def visit_FunctionNode(self, node: FunctionNode, symbol_table: SymbolTable) -> None:
+        """
+        Defines function in the global symbol table,
+        stored for reference till function call.
+        """
+        self.symbol_table[node.func_name] = node
+
+    def visit_ReturnNode(self, node: ReturnNode, symbol_table: SymbolTable) -> Union[Number, String]:
+        result = self.visit(node.expression, symbol_table)
+        return result
+
+    def visit_FunctionCallNode(self, node: FunctionCallNode, symbol_table: SymbolTable) -> None:
+        """Executes function called with said parameters"""
+        func = symbol_table[node.func_name]
+        for param, name_of_param in zip(node.params, func.params):
+            func.local_symbol_table[name_of_param.value] = self.visit(param, symbol_table)
+
+        for line in func.body:
+            if line:
+                result = self.visit(line, func.local_symbol_table)
+                if isinstance(line, ReturnNode):
+                    return result
+                elif isinstance(result, ReturnNode):
+                    return self.visit(result, func.local_symbol_table)
+
+    def visit_WhileNode(self, node: WhileNode, symbol_table: SymbolTable) -> None:
         """
         Executes code within while loop.
 
@@ -35,15 +62,18 @@ class Interpreter:
         code within the block while under that certain condition.
         """
         while True:
-            if self.visit(node.cond).value == 0:
+            if self.visit(node.cond, symbol_table).value == 0:
                 break
             else:
                 for expr in node.body:
                     if expr is not None:
-                        self.visit(expr)
+                        if isinstance(expr, ReturnNode):
+                            return expr
+                        res = self.visit(expr, symbol_table)
+                        if isinstance(res, ReturnNode):
+                            return res
 
-
-    def visit_ForNode(self, node: ForNode) -> None:
+    def visit_ForNode(self, node: ForNode, symbol_table: SymbolTable) -> Union[None, ReturnNode]:
         """
         Executes code within the for loop.
 
@@ -51,25 +81,28 @@ class Interpreter:
         for said for loop.
         """
         # initializing node_var
-        node_var = self.visit(node.var_name)
-        node_var = VarAccessNode(node.var_name.name)
-        end_value = node.end_value
+        symbol_table[node.var_name.name] = self.visit(node.var_name.value, symbol_table)
+        end_value = self.visit(node.end_value, symbol_table)
         body = node.body
-        step_value = node.step_value
-        check = node.start_value
-        if step_value > 0:
-            condition = lambda: check < end_value
+        step_value = self.visit(node.step_value, symbol_table)
+        check = self.visit(node.start_value, symbol_table)
+        if step_value.value > 0:
+            condition = lambda: bool((check < end_value).value)
         else:
-            condition = lambda: check > end_value
+            condition = lambda: bool((check > end_value).value)
 
         while condition() is True:
             for expr in body:
                 if expr is not None:
-                    self.visit(expr)
-            self.symbol_table[node_var.name] += Number(step_value)
-            check += step_value
+                    if isinstance(expr, ReturnNode):
+                        return expr
+                    res = self.visit(expr, symbol_table)
+                    if isinstance(res, ReturnNode):
+                        return res
+            symbol_table[node.var_name.name] += Number(step_value)
+            check = check + step_value
 
-    def visit_NumberNode(self, node: NumberNode) -> String:
+    def visit_NumberNode(self, node: NumberNode, symbol_table: SymbolTable) -> String:
         """
         Returns a Number class from NumberNode
 
@@ -77,7 +110,7 @@ class Interpreter:
         """
         return Number(node.tok.value)
 
-    def visit_StringNode(self, node: StringNode) -> String:
+    def visit_StringNode(self, node: StringNode, symbol_table: SymbolTable) -> String:
         """
         Returns a String class from StringNode
 
@@ -85,74 +118,76 @@ class Interpreter:
         """
         return String(node.tok.value)
 
-    def visit_BinOpNode(self, node: BinOpNode) -> Union[Number, String]:
+    def visit_BinOpNode(self, node: BinOpNode, symbol_table: SymbolTable) -> Union[Number, String]:
         """
         Returns a Number or String class depending on the binary operation being done
 
         Shortens binary operation to a single result
         """
-        if type(self.visit(node.left_node)).__name__ == 'Number' and \
-                type(self.visit(node.right_node)).__name__ == 'Number':
+        left_node = self.visit(node.left_node, symbol_table)
+        right_node = self.visit(node.right_node, symbol_table)
+        if type(left_node).__name__ == 'Number' and \
+                type(right_node).__name__ == 'Number':
             if node.op_tok.token_type == TokenType.PLUS:
-                return Number(self.visit(node.left_node)) + Number(self.visit(node.right_node))
+                return Number(left_node) + Number(right_node)
             elif node.op_tok.token_type == TokenType.MINUS:
-                return Number(self.visit(node.left_node)) - Number(self.visit(node.right_node))
+                return Number(left_node) - Number(right_node)
             elif node.op_tok.token_type == TokenType.MULT:
-                return Number(self.visit(node.left_node)) * Number(self.visit(node.right_node))
+                return Number(left_node) * Number(right_node)
             elif node.op_tok.token_type == TokenType.DIV:
-                return Number(self.visit(node.left_node)) / Number(self.visit(node.right_node))
+                return Number(left_node) / Number(right_node)
             elif node.op_tok.token_type == TokenType.EXP:
-                return Number(self.visit(node.left_node)) ** Number(self.visit(node.right_node))
+                return Number(left_node) ** Number(right_node)
             elif node.op_tok.token_type == TokenType.N_EQ:
-                return Number(self.visit(node.left_node) != self.visit(node.right_node))
+                return Number(left_node != right_node)
             elif node.op_tok.token_type == TokenType.IS_EQ:
-                return Number(self.visit(node.left_node) == self.visit(node.right_node))
+                return Number(left_node == right_node)
             elif node.op_tok.token_type == TokenType.LTE:
-                return Number(self.visit(node.left_node) <= self.visit(node.right_node))
+                return Number(left_node <= right_node)
             elif node.op_tok.token_type == TokenType.GTE:
-                return Number(self.visit(node.left_node) >= self.visit(node.right_node))
+                return Number(left_node >= right_node)
             elif node.op_tok.token_type == TokenType.LT:
-                return Number(self.visit(node.left_node) < self.visit(node.right_node))
+                return Number(left_node < right_node)
             elif node.op_tok.token_type == TokenType.GT:
-                return Number(self.visit(node.left_node) > self.visit(node.right_node))
+                return Number(left_node > right_node)
             elif node.op_tok.value == 'and':
-                return Number(self.visit(node.left_node)).anded_by(self.visit(node.right_node))
+                return Number(left_node).anded_by(right_node)
             elif node.op_tok.value == 'or':
-                return Number(self.visit(node.left_node)).ored_by(self.visit(node.right_node))
+                return Number(left_node).ored_by(right_node)
 
-        elif type(self.visit(node.left_node)).__name__ == 'String' and \
-                type(self.visit(node.right_node)).__name__ == 'String':
+        elif type(left_node).__name__ == 'String' and \
+                type(right_node).__name__ == 'String':
             if node.op_tok.token_type == TokenType.PLUS:
-                return String(self.visit(node.left_node)) + String(self.visit(node.right_node))
+                return String(left_node.value) + String(right_node.value)
             elif node.op_tok.token_type == TokenType.MINUS:
-                return String(self.visit(node.left_node)) - String(self.visit(node.right_node))
+                return String(left_node) - String(right_node)
             elif node.op_tok.token_type == TokenType.N_EQ:
-                return Number(self.visit(node.left_node) != self.visit(node.right_node))
+                return Number(left_node != right_node)
             elif node.op_tok.token_type == TokenType.IS_EQ:
-                return Number(self.visit(node.left_node) == self.visit(node.right_node))
+                return Number(left_node == right_node)
             elif node.op_tok.token_type == TokenType.LTE:
-                return Number(self.visit(node.left_node) <= self.visit(node.right_node))
+                return Number(left_node <= right_node)
             elif node.op_tok.token_type == TokenType.GTE:
-                return Number(self.visit(node.left_node) >= self.visit(node.right_node))
+                return Number(left_node >= right_node)
             elif node.op_tok.token_type == TokenType.LT:
-                return Number(self.visit(node.left_node) < self.visit(node.right_node))
+                return Number(left_node < right_node)
             elif node.op_tok.token_type == TokenType.GT:
-                return Number(self.visit(node.left_node) > self.visit(node.right_node))
+                return Number(left_node > right_node)
 
-        elif (type(self.visit(node.left_node)).__name__ == 'String' and \
-              isinstance(self.visit(node.right_node).value, int)) or \
-                type(self.visit(node.right_node)).__name__ == 'String' and \
-                isinstance(self.visit(node.left_node).value, int):
+        elif (type(left_node).__name__ == 'String' and \
+              isinstance(right_node.value, int)) or \
+                type(right_node).__name__ == 'String' and \
+                isinstance(left_node.value, int):
             if node.op_tok.token_type == TokenType.MULT:
-                return String(self.visit(node.left_node).value * Number(self.visit(node.right_node)).value)
+                return String(left_node.value * Number(right_node).value)
 
-    def visit_UnaryOpNode(self, node: UnaryOpNode) -> Number:
+    def visit_UnaryOpNode(self, node: UnaryOpNode, symbol_table: SymbolTable) -> Number:
         """
         Returns the same number or the negative version of said number.
 
         UnaryOpNode is a node class used for unary operations denoted by -{number} or +{number}
         """
-        number = self.visit(node.node)
+        number = self.visit(node.node, symbol_table)
 
         if node.op_tok.token_type == TokenType.MINUS:
             return number * Number(-1)
@@ -161,34 +196,39 @@ class Interpreter:
         elif node.op_tok.value == 'not':
             return number.notted_by()
 
-    def visit_VarAssignNode(self, node: VarAssignNode) -> None:
+    def visit_VarAssignNode(self, node: VarAssignNode, symbol_table: SymbolTable) -> None:
         """
         Assigns a variable in the symbol table
 
         VarAssignNode is a node class used for the assignment of a variable, denoted by 'identifier = value'.
         """
-        # currently not added locality for symbol tables so they are only global for now
 
-        assignment = self.visit(node.value)
+        assignment = self.visit(node.value, symbol_table)
 
-        self.symbol_table[node.name] = assignment
+        symbol_table[node.name] = assignment
 
-    def visit_VarAccessNode(self, node: VarAccessNode) -> Union[Number, String]:
+    def visit_VarAccessNode(self, node: VarAccessNode, symbol_table: SymbolTable) -> Union[Number, String]:
         """
         Returns the value of a variable in the symbol table.
 
         VarAccessNode is a node class used for getting the value of a certain variable, denoted by 'identifier'.
         """
-        return self.symbol_table[node.name]
+        try:
+            res = symbol_table[node.name]
+        except KeyError:
+            if symbol_table != self.symbol_table:
+                res = self.symbol_table[node.name]
 
-    def visit_list(self, list_to_visit: list) -> Number:
+        return res
+
+    def visit_list(self, list_to_visit: list, symbol_table: SymbolTable) -> Number:
         """
         The visit_list method is for visiting logical expressions,
         containing things like <, >, <=, >=, and, or, not, etc.
         """
         passed_cases = []
         for node in list_to_visit:
-            result = self.visit(node)
+            result = self.visit(node, symbol_table)
             passed_cases.append(result)
 
         if False in [num.value == 1 for num in passed_cases]:
@@ -196,7 +236,7 @@ class Interpreter:
         else:
             return self.symbol_table["true"]
 
-    def visit_IfNode(self, node: IfNode) -> List:
+    def visit_IfNode(self, node: IfNode, symbol_table: SymbolTable) -> Union[List, ReturnNode]:
         """
         Interprets an if statement.
 
@@ -206,7 +246,7 @@ class Interpreter:
             condition = case[0]
             passed_cases = []
             for idx, cond in enumerate(condition):
-                result = self.visit(cond)
+                result = self.visit(cond, symbol_table)
                 passed_cases.append(result)
             expr = case[-1]
             if False in [num.value == 1 for num in passed_cases]:
@@ -214,7 +254,9 @@ class Interpreter:
             else:
                 block_results = []
                 for line in [elem for elem in expr if elem is not None]:
-                    res = self.visit(line)
+                    if isinstance(line, ReturnNode):
+                        return line
+                    res = self.visit(line, symbol_table)
                     block_results.append(res)
                 return block_results
 
@@ -223,7 +265,9 @@ class Interpreter:
 
             block_results = []
             for line in [elem for elem in expr if elem is not None]:
-                res = self.visit(line)
+                if isinstance(line, ReturnNode):
+                    return line
+                res = self.visit(line, symbol_table)
                 block_results.append(res)
 
             return block_results

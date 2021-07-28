@@ -20,7 +20,7 @@ class StringNode:
         self.tok = tok
 
     def __repr__(self):
-        return f'"{self.tok}"'
+        return f'{self.tok}'
 
 
 class BinOpNode:
@@ -42,6 +42,21 @@ class BinOpNode:
         return f'({self.left_node}, {self.op_tok}, {self.right_node})'
 
 
+class ReturnNode:
+    """
+    Node when the return keyword is used.
+
+    Returning is syntactically defined as:
+    return {expr}
+    """
+
+    def __init__(self, expression):
+        self.expression = expression
+
+    def __repr__(self):
+        return f'return {self.expression}'
+
+
 class FunctionNode:
     """
     Node for the definition of a function.
@@ -50,11 +65,11 @@ class FunctionNode:
         # code goes here
     }
     """
-    def __init__(self, func_name: str, params: list, body: list):
+    def __init__(self, func_name: str, params: list, symbol_table: SymbolTable, body: list):
         self.func_name = func_name
         self.params = params
         self.body = body
-        self.local_symbol_table = SymbolTable()
+        self.local_symbol_table = symbol_table
 
     def __repr__(self):
         return f'(name: {self.func_name}, params: {self.params}, body: {self.body})'
@@ -82,7 +97,9 @@ class ForNode:
     body
     }
     """
-    def __init__(self, var_name: "VarAssignNode", start_value: int, end_value: int, step_value: int, body: list):
+    def __init__(self, var_name: "VarAssignNode", start_value: Union[NumberNode, "VarAccessNode"],
+                 end_value: Union[NumberNode, "VarAccessNode"], step_value: Union[NumberNode, "VarAccessNode"],
+                 body: list):
         self.var_name = var_name
         self.start_value = start_value
         self.end_value = end_value

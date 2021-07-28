@@ -1,5 +1,6 @@
 from ..resources.tokens.token_types import Token, TokenType
 from ..resources.nodes.nodes import *
+from time import sleep
 from typing import List
 
 
@@ -98,9 +99,19 @@ class Parser:
         token = self.current_tok
 
         if token is not None:
+            if token.token_type == TokenType.KEYWORD and token.value == 'return':
+                self.advance()
+                return_expr = self.expr()
+                return ReturnNode(return_expr)
+
             if token.token_type == TokenType.KEYWORD and token.value == 'for':
                 self.advance()
                 result = self.for_expr()
+                return result
+
+            if token.token_type == TokenType.KEYWORD and token.value == "define":
+                self.advance()
+                result = self.create_function_expr()
                 return result
 
             if token.token_type == TokenType.KEYWORD and token.value == 'while':
@@ -151,9 +162,53 @@ class Parser:
                     self.advance()
                     result = self.expr()
                     return VarAssignNode(token.value, result)
-                elif self.tokens[self.pos + 1].token_type != TokenType.EQ:
+                elif self.tokens[self.pos + 1].token_type == TokenType.LPAREN:
+                    result = self.function_call_expr()
+                    return result
+                else:
                     self.advance()
                     return VarAccessNode(token.value)
+
+        self.called = False
+
+    def function_call_expr(self) -> FunctionCallNode:
+        """Used when function is called"""
+        func_name = self.current_tok.value
+        self.advance()
+        self.advance()
+        params = []
+        while self.current_tok.token_type != TokenType.RPAREN:
+            if self.current_tok.token_type == TokenType.SEPARATOR:
+                self.advance()
+            params.append(self.factor())
+        self.advance()
+        return FunctionCallNode(func_name, params)
+
+    def create_function_expr(self) -> FunctionNode:
+        """Creating the FunctionNode when defining a function."""
+        name = self.current_tok.value
+        symbol_table = SymbolTable()
+        self.advance()
+        self.advance()
+        params = []
+        while self.current_tok.token_type != TokenType.RPAREN:
+            if self.current_tok.token_type == TokenType.SEPARATOR:
+                self.advance()
+            symbol_table[self.current_tok.value] = Number(0)
+            params.append(self.current_tok)
+            self.advance()
+        self.advance()
+        self.advance()
+        body = []
+        self.advance()
+        while self.current_tok.token_type != TokenType.BLOCK_CLOSE:
+            result = self.expr()
+            if self.current_tok.token_type == TokenType.NEWLINE:
+                self.advance()
+            body.append(result)
+        self.advance()
+
+        return FunctionNode(func_name=name, params=params, symbol_table=symbol_table, body=body)
 
     def parentheses_logical_expr(self) -> Union[List, bool]:
         """Helper function for dealing with parenthesized logical expressions"""
@@ -327,23 +382,21 @@ class Parser:
         # advance past the parentheses
         self.advance()
         if self.current_tok.token_type == TokenType.IDENTIFIER:
-            var_name = VarAssignNode(self.current_tok.value, NumberNode(self.tokens[self.pos + 2]))
-        self.advance()
-        self.advance()
-        start_value = int(self.current_tok.value)
-        self.advance()
-        self.advance()
-        end_value = int(self.current_tok.value)
-        self.advance()
-        if self.tokens[self.pos + 1].token_type == TokenType.INT:
+            name = self.current_tok.value
             self.advance()
-            step_value = int(self.current_tok.value)
+            self.advance()
+            start_value = self.factor()
+            var_name = VarAssignNode(name, start_value)
+        self.advance()
+        end_value = self.factor()
+        self.advance()
+        if self.current_tok.token_type == TokenType.INT or self.current_tok.token_type == TokenType.MINUS:
+            step_value = self.factor()
             self.advance()
         else:
-            step_value = 1
+            step_value = NumberNode(Token(TokenType.INT, '1'))
         self.advance()
         body = []
-        self.advance()
         while self.current_tok.token_type != TokenType.BLOCK_CLOSE:
             result = self.expr()
             if self.current_tok.token_type == TokenType.NEWLINE:
