@@ -42,7 +42,10 @@ class Interpreter:
 
     def visit_FunctionCallNode(self, node: FunctionCallNode, symbol_table: SymbolTable) -> None:
         """Executes function called with said parameters"""
-        func = symbol_table[node.func_name]
+        try:
+            func = symbol_table[node.func_name]
+        except KeyError:
+            func = self.symbol_table[node.func_name]
         for param, name_of_param in zip(node.params, func.params):
             func.local_symbol_table[name_of_param.value] = self.visit(param, symbol_table)
 

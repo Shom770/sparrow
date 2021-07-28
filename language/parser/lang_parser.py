@@ -180,7 +180,7 @@ class Parser:
         while self.current_tok.token_type != TokenType.RPAREN:
             if self.current_tok.token_type == TokenType.SEPARATOR:
                 self.advance()
-            params.append(self.factor())
+            params.append(self.expr())
         self.advance()
         return FunctionCallNode(func_name, params)
 
