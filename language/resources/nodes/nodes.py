@@ -242,8 +242,6 @@ class String:
         return Number(self.value == other.value)
 
 
-
-
 class VarAssignNode:
     """
     Node for the assignment of a variable
@@ -271,3 +269,39 @@ class VarAccessNode:
 
     def __repr__(self):
         return f'{self.name}'
+
+
+class AccessNode:
+    """
+    Node for accessing symbol tables, specifically for class instances.
+
+    Accessing a symbol table is syntactically defined as:
+    {variable with symbol table}.{item to access}
+    """
+    def __init__(self, accessor: VarAccessNode, item_to_access: Union[VarAccessNode, FunctionNode]):
+        self.accessor = accessor
+        self.item_to_access = item_to_access
+
+    def __repr__(self):
+        return f'(from {self.accessor}, get {self.item_to_access})'
+
+
+class ObjectNode:
+    """
+    Node for user-defined objects.
+
+    Creating an object syntactically looks like:
+    object {name} {
+        # constructors
+    }
+    """
+    def __init__(self, name: str, methods: dict, special_methods: dict, attributes: dict, symbol_table: SymbolTable, global_attrs: list):
+        self.name = name
+        self.methods = methods
+        self.special_methods = special_methods
+        self.attributes = attributes
+        self.class_attrs = global_attrs
+        self.local_symbol_table = symbol_table
+
+    def __repr__(self):
+        return f'(name: {self.name}, methods: {self.methods}, special methods: {self.special_methods}, attributes: {self.local_symbol_table.symbols})'

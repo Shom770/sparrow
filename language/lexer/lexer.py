@@ -1,7 +1,7 @@
 from ..resources.tokens.token_types import TokenType, Token
 from string import ascii_letters
 
-KEYWORDS = ['define', 'cls', 'give', 'if', 'elif', 'else', 'and', 'or', 'not', 'for', 'while', 'return']
+KEYWORDS = ['define', 'object', 'cls', 'if', 'elif', 'else', 'and', 'or', 'not', 'for', 'while', 'return']
 LETTERS_DIGITS = ascii_letters + '0123456789'
 
 
@@ -42,6 +42,9 @@ class Lexer:
             elif self.current_char == ',':
                 tokens.append(Token(TokenType.SEPARATOR, ','))
                 self.advance()
+            elif self.current_char == '.':
+                tokens.append(Token(TokenType.ACCESS, '.'))
+                self.advance()
             elif self.current_char in '+-/*^()!=<>':
                 tokens.append(self.make_operator())
             elif self.current_char == '{':
@@ -50,7 +53,7 @@ class Lexer:
             elif self.current_char == '}':
                 tokens.append(Token(TokenType.BLOCK_CLOSE, '}'))
                 self.advance()
-            elif self.current_char in '0124356789.':
+            elif self.current_char in '0124356789':
                 tokens.append(self.make_number())
             elif self.current_char in LETTERS_DIGITS + '_':
                 tokens.append(self.make_identifier())

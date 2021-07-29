@@ -104,6 +104,11 @@ class Parser:
                 return_expr = self.expr()
                 return ReturnNode(return_expr)
 
+            if token.token_type == TokenType.KEYWORD and token.value == "object":
+                self.advance()
+                result = self.obj_expr()
+                return result
+
             if token.token_type == TokenType.KEYWORD and token.value == 'for':
                 self.advance()
                 result = self.for_expr()
@@ -165,6 +170,17 @@ class Parser:
                 elif self.tokens[self.pos + 1].token_type == TokenType.LPAREN:
                     result = self.function_call_expr()
                     return result
+                elif self.tokens[self.pos + 1].token_type == TokenType.ACCESS:
+                    self.advance()
+                    self.advance()
+                    access_node = AccessNode(VarAccessNode(token.value), self.factor())
+                    if self.current_tok.token_type == TokenType.EQ:
+                        self.advance()
+                        self.advance()
+                        result = self.expr()
+                        return VarAssignNode(access_node, result)
+                    else:
+                        return access_node
                 else:
                     self.advance()
                     return VarAccessNode(token.value)
@@ -342,6 +358,38 @@ class Parser:
         return cases
 
         self.advance()
+
+    def obj_expr(self) -> ObjectNode:
+        """Expression used to parse through an object in the language"""
+        name = self.current_tok.value
+        symbol_table = SymbolTable()
+        methods = {}
+        special_methods = {'init': None}
+        attrs = {}
+        global_attrs = []
+        self.advance()
+        self.advance()
+        while self.current_tok.token_type != TokenType.BLOCK_CLOSE:
+            if self.current_tok.value == 'cls' and self.current_tok.token_type == TokenType.KEYWORD:
+                self.advance()
+                global_attrs.append(self.factor())
+            else:
+                result = self.factor()
+                if isinstance(result, FunctionNode):
+                    methods[result.func_name] = result
+                    if result.func_name in special_methods.keys():
+                        del methods[result.func_name]
+                        special_methods[result.func_name] = result
+
+                    for line in result.body:
+                        if isinstance(line, VarAssignNode):
+                            attrs[line] = line
+                elif isinstance(result, VarAssignNode):
+                    attrs[result] = result
+            self.advance()
+
+        return ObjectNode(name, methods, special_methods, attrs, symbol_table, global_attrs)
+
 
     def if_expr(self, main_func: bool) -> IfNode:
         """Expression used for if statements in the language"""

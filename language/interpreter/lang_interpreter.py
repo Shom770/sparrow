@@ -34,7 +34,32 @@ class Interpreter:
         Defines function in the global symbol table,
         stored for reference till function call.
         """
-        self.symbol_table[node.func_name] = node
+        symbol_table[node.func_name] = node
+
+    def visit_AccessNode(self, node: AccessNode, symbol_table: SymbolTable):
+        accessing = self.visit(node.accessor, symbol_table)
+
+        if isinstance(accessing, tuple):
+            local_symbol_table = accessing[0].local_symbol_table
+            try:
+                item = self.visit(node.item_to_access, local_symbol_table)
+            except KeyError:
+                item = self.visit(node.item_to_access, accessing[1])
+        else:
+            item = self.visit(node.item_to_access, symbol_table)
+
+        return item
+
+    def visit_ObjectNode(self, node: ObjectNode, symbol_table: SymbolTable) -> None:
+        """Interprets an object and will create the object."""
+        symbol_table[node.name] = (node, {})
+        for class_attr in node.class_attrs:
+            symbol_table[node.name][1][class_attr.name] = self.visit(class_attr.value, symbol_table)
+        for func in [val for val in node.methods.values()]:
+            self.visit(func, node.local_symbol_table)
+
+        for func_spec in [val_spec for val_spec in node.special_methods.values()]:
+            self.visit(func_spec, node.local_symbol_table)
 
     def visit_ReturnNode(self, node: ReturnNode, symbol_table: SymbolTable) -> Union[Number, String]:
         result = self.visit(node.expression, symbol_table)
@@ -42,20 +67,51 @@ class Interpreter:
 
     def visit_FunctionCallNode(self, node: FunctionCallNode, symbol_table: SymbolTable) -> None:
         """Executes function called with said parameters"""
-        try:
-            func = symbol_table[node.func_name]
-        except KeyError:
-            func = self.symbol_table[node.func_name]
-        for param, name_of_param in zip(node.params, func.params):
-            func.local_symbol_table[name_of_param.value] = self.visit(param, symbol_table)
+        if isinstance(symbol_table[node.func_name], tuple):
+            class_node = symbol_table[node.func_name][0]
 
-        for line in func.body:
-            if line:
-                result = self.visit(line, func.local_symbol_table)
-                if isinstance(line, ReturnNode):
-                    return result
-                elif isinstance(result, ReturnNode):
-                    return self.visit(result, func.local_symbol_table)
+            new_symbol_table = SymbolTable()
+            initialization = symbol_table[node.func_name][0].special_methods['init']
+            node.params = [self.visit(param, symbol_table) for param in node.params]
+            if 'inst' in [name_of_param.value for name_of_param in initialization.params]:
+                node.params = [{}] + node.params
+            for param, name_of_param in zip(node.params, initialization.params):
+                new_symbol_table[name_of_param.value] = param
+
+            new_symbol_table.symbols.update(class_node.methods)
+
+            new_obj = ObjectNode(name=class_node.name, methods=class_node.methods,
+                                 special_methods=class_node.special_methods,
+                                 attributes=class_node.attributes, symbol_table=new_symbol_table,
+                                 global_attrs=class_node.class_attrs)
+            new_item = (new_obj, new_obj.class_attrs)
+
+            for line in initialization.body:
+                if line:
+                    self.visit(line, new_obj.local_symbol_table)
+            return new_item
+
+        else:
+            node.params = [self.visit(param, symbol_table) for param in node.params]
+            if 'inst' in [param.value for param in symbol_table[node.func_name].params]:
+                node.params = [symbol_table] + node.params
+            try:
+                func = symbol_table[node.func_name]
+            except KeyError:
+                func = self.symbol_table[node.func_name]
+            for param, name_of_param in zip(node.params, func.params):
+                func.local_symbol_table[name_of_param.value] = param
+
+            for line in func.body:
+                if line:
+                    try:
+                        result = self.visit(line, func.local_symbol_table)
+                    except KeyError:
+                        result = self.visit(line, symbol_table)
+                    if isinstance(line, ReturnNode):
+                        return result
+                    elif isinstance(result, ReturnNode):
+                        return self.visit(result, func.local_symbol_table)
 
     def visit_WhileNode(self, node: WhileNode, symbol_table: SymbolTable) -> None:
         """
@@ -205,7 +261,6 @@ class Interpreter:
 
         VarAssignNode is a node class used for the assignment of a variable, denoted by 'identifier = value'.
         """
-
         assignment = self.visit(node.value, symbol_table)
 
         symbol_table[node.name] = assignment
@@ -270,7 +325,10 @@ class Interpreter:
             for line in [elem for elem in expr if elem is not None]:
                 if isinstance(line, ReturnNode):
                     return line
-                res = self.visit(line, symbol_table)
+                try:
+                    res = self.visit(line, symbol_table)
+                except Exception as e:
+                    print(e)
                 block_results.append(res)
 
             return block_results

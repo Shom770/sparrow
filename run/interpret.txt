@@ -1,0 +1,16 @@
+object Foo {
+cls var = 1 + 2
+define init(inst, bar){
+inst.bar = bar
+inst.x = 1
+}
+define get_bar(inst, hey){
+return hey
+}
+}
+
+foo = Foo("no luv")
+abc = Foo("hey")
+a = abc.get_bar(2)
+a.bar = 2
+foo.bar
