@@ -1,16 +1,17 @@
 object Foo {
-cls var = 1 + 2
-define init(inst, bar){
-inst.bar = bar
-inst.x = 1
-}
-define get_bar(inst, hey){
-return hey
-}
+    define init(inst, bar) {
+        inst.bar = bar
+    }
+    define is_true(inst) {
+        if inst.bar == 4 {
+            return inst.bar
+        }
+        else {
+            return 0
+        }
+    }
 }
 
-foo = Foo("no luv")
-abc = Foo("hey")
-a = abc.get_bar(2)
-a.bar = 2
-foo.bar
+foo = Foo(4)
+a = foo.is_true()
+a
