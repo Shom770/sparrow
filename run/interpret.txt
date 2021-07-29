@@ -1,17 +1,19 @@
-object Foo {
-    define init(inst, bar) {
-        inst.bar = bar
+object Math {
+    define init(inst, num) {
+        inst.num = num
     }
-    define is_true(inst) {
-        if inst.bar == 4 {
-            return inst.bar
+    define factorial(inst, number) {
+        original = inst.num
+        inst.num = inst.num - 1
+        if original == 1 {
+            return 1
         }
         else {
-            return 0
+            return original * inst.factorial(inst.num)
         }
     }
 }
 
-foo = Foo(4)
-a = foo.is_true()
+foo = Math(15)
+a = foo.factorial()
 a

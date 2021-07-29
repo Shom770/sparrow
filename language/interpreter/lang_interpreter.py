@@ -40,7 +40,6 @@ class Interpreter:
 
     def visit_AccessNode(self, node: AccessNode, symbol_table: SymbolTable):
         accessing = self.visit(node.accessor, symbol_table)
-
         if isinstance(accessing, tuple):
             local_symbol_table = accessing[0].local_symbol_table
             try:
@@ -51,7 +50,9 @@ class Interpreter:
                 except KeyError:
                     item = self.visit(node.item_to_access, accessing[1])
         elif isinstance(node.item_to_access, FunctionCallNode):
-            item = self.visit(node.item_to_access, accessing.local_symbol_table)
+            result = accessing[node.item_to_access.func_name]
+            result = FunctionCallNode(result.func_name, node.item_to_access.params)
+            item = self.visit(result, accessing)
         else:
             try:
                 item = self.visit(node.item_to_access, accessing)
@@ -336,10 +337,7 @@ class Interpreter:
             for line in [elem for elem in expr if elem is not None]:
                 if isinstance(line, ReturnNode):
                     return line
-                try:
-                    res = self.visit(line, symbol_table)
-                except Exception as e:
-                    print(e)
+                res = self.visit(line, symbol_table)
                 block_results.append(res)
 
             return block_results

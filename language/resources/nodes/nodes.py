@@ -152,6 +152,7 @@ class IfNode:
         text = '\n'
         for condition in self.cases:
             text += f"condition: {condition}\n"
+        text += f"else case: {self.else_case}\n"
         return text
 
 
