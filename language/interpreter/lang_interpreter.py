@@ -150,9 +150,10 @@ class Interpreter:
 
                 if 'inst' in func.local_symbol_table.symbols.keys() and not isinstance(func.local_symbol_table["inst"], SymbolTable):
                     func.local_symbol_table["inst"] = symbol_table
+                    func.local_symbol_table["inst"]["params"] = {}
                 for param, name_of_param in zip(node.params, func.params):
                     if 'inst' in func.local_symbol_table.symbols.keys():
-                        func.local_symbol_table["inst"][name_of_param.value] = param
+                        func.local_symbol_table["inst"]["params"][name_of_param.value] = param
                         if name_of_param.value in func.local_symbol_table.symbols.keys() and name_of_param.value != 'inst':
                             del func.local_symbol_table[name_of_param.value]
                     else:
@@ -165,9 +166,15 @@ class Interpreter:
                             result = self.visit(line, symbol_table)
                         if isinstance(line, ReturnNode):
                             res = result
+                            if isinstance(line.expression, AccessNode) and \
+                                    isinstance(line.expression.item_to_access, FunctionCallNode):
+                                if 'inst' in func.local_symbol_table.symbols.keys():
+                                    del func.local_symbol_table["inst"]["params"]
                             return res
                         elif isinstance(result, ReturnNode):
                             res = self.visit(result, func.local_symbol_table)
+                            if 'inst' in func.local_symbol_table.symbols.keys():
+                                del func.local_symbol_table["inst"]["params"]
                             return res
                 if 'inst' in func.local_symbol_table.symbols.keys():
                     del func.local_symbol_table["inst"]["params"]
