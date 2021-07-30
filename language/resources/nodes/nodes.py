@@ -308,3 +308,64 @@ class ObjectNode:
 
     def __repr__(self):
         return f'(name: {self.name}, methods: {self.methods}, special methods: {self.special_methods}, attributes: {self.local_symbol_table.symbols})'
+
+
+class ExecuteBuiltInsNode:
+    """
+    Node for executing built in functions
+
+    The following are currently built-in functions:
+        print
+        input
+        input_int
+        is_number
+        is_string
+    """
+    def __init__(self, name: str, params: list):
+        self.name = name
+        self.method = getattr(self, f"execute_{name}")
+        self.params = params
+
+    def fetch_func(self):
+        """Used when in interpreter to fetch the built-in function."""
+        return self.method(self.params)
+
+    def execute_print(self, params: list) -> list:
+        """Helper function to execute a print statement"""
+        return params
+
+    def execute_input(self, params: list) -> String:
+        """Helper function to fetch input"""
+        if params:
+            to_display = params[0]
+        else:
+            to_display = ''
+        text = input(to_display.value)
+        return String(text)
+
+    def execute_input_int(self, params: list) -> String:
+        """Helper function to fetch input in the form of a number"""
+        if params:
+            to_display = params[0]
+        else:
+            to_display = ''
+        text = input(to_display.value)
+        try:
+            text = int(text)
+        except ValueError:
+            return f"{text} is not a number!"
+
+        return Number(str(text))
+
+    def execute_is_number(self, params: list) -> Number:
+        """Helper function to see if the argument is a number"""
+        if isinstance(params[0], NumberNode) or isinstance(params[0], Number):
+            return Number(1)
+        else:
+            return Number(0)
+
+    def execute_is_string(self, params: list) -> Number:
+        if isinstance(params[0], StringNode) or isinstance(params[0], String):
+            return Number(1)
+        else:
+            return Number(0)

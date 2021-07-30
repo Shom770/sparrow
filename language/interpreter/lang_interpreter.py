@@ -83,10 +83,21 @@ class Interpreter:
             self.visit(func_spec, node.local_symbol_table)
 
     def visit_ReturnNode(self, node: ReturnNode, symbol_table: SymbolTable) -> Union[Number, String]:
+        """Used for when using the return keyword."""
         result = self.visit(node.expression, symbol_table)
         return result
 
-    def visit_FunctionCallNode(self, node: FunctionCallNode, symbol_table: SymbolTable, superclass: bool = False) -> None:
+    def visit_ExecuteBuiltInsNode(self, node: ExecuteBuiltInsNode, symbol_table: SymbolTable) -> Union[tuple,
+                                                                                                       String, Number]:
+        """Executes built-in functions."""
+        node.params = [self.visit(param, symbol_table) for param in node.params]
+        if node.name == "print":
+            return ('print', '\n'.join([str(print_param.value) for print_param in node.params]))
+        else:
+            return node.fetch_func()
+
+    def visit_FunctionCallNode(self, node: FunctionCallNode, symbol_table: SymbolTable,
+                               superclass: bool = False) -> None:
         """Executes function called with said parameters"""
         if symbol_table:
             if superclass:

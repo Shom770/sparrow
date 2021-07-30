@@ -190,6 +190,10 @@ class Parser:
     def function_call_expr(self) -> FunctionCallNode:
         """Used when function is called"""
         func_name = self.current_tok.value
+        if func_name in ('print', 'input', 'input_int', 'is_number', 'is_string'):
+            built_in = True
+        else:
+            built_in = False
         self.advance()
         self.advance()
         params = []
@@ -198,7 +202,10 @@ class Parser:
                 self.advance()
             params.append(self.expr())
         self.advance()
-        return FunctionCallNode(func_name, params)
+        if built_in:
+            return ExecuteBuiltInsNode(func_name, params)
+        else:
+            return FunctionCallNode(func_name, params)
 
     def create_function_expr(self) -> FunctionNode:
         """Creating the FunctionNode when defining a function."""

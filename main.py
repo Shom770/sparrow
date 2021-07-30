@@ -21,6 +21,5 @@ def run():
 
 result = run()
 # show results line by line
-text_to_return = [(str(line_return) if isinstance(line_return, list) or isinstance(line_return, tuple)
-                   else str(line_return.value)) if line_return else '' for line_return in result]
-stdout.write('\n'.join(text_to_return).strip('\n'))
+text_to_return = [str(line_return[1]) for line_return in result if line_return is not None and isinstance(line_return, tuple)]
+stdout.write(''.join(text_to_return).strip('\n'))
