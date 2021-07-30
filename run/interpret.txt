@@ -1,19 +1,32 @@
-object Math {
-    define init(inst, num) {
-        inst.num = num
+object Bar {
+    define init(inst, al) {
+    inst.bar = 2
+    inst.baz = al
     }
-    define factorial(inst, number) {
-        original = inst.num
-        inst.num = inst.num - 1
-        if original == 1 {
-            return 1
-        }
-        else {
-            return original * inst.factorial(inst.num)
-        }
+    define draw(inst, coord1, coord2) {
+        return coord1 + coord2
+    }
+    define x(inst) {
+        return 1
+    }
+
+}
+object Foo(Bar) {
+    define init(inst, abc) {
+        inst.abc = abc
+        super.init(5)
+    }
+    define draw(inst, coord1, coord2) {
+        return super.draw(coord1, coord2)
+    }
+    define is_true(inst) {
+        return super.x()
     }
 }
 
-foo = Math(15)
-a = foo.factorial()
-a
+foo = Foo(5)
+foo.bar
+foo.baz
+foo.abc
+foo.draw(3, 15)
+foo.is_true()

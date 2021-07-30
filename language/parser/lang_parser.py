@@ -362,6 +362,13 @@ class Parser:
     def obj_expr(self) -> ObjectNode:
         """Expression used to parse through an object in the language"""
         name = self.current_tok.value
+        if self.tokens[self.pos + 1].token_type == TokenType.LPAREN:
+            self.advance()
+            self.advance()
+            inherit = self.current_tok.value
+            self.advance()
+        else:
+            inherit = None
         symbol_table = SymbolTable()
         methods = {}
         special_methods = {'init': None}
@@ -388,7 +395,7 @@ class Parser:
                     attrs[result] = result
             self.advance()
 
-        return ObjectNode(name, methods, special_methods, attrs, symbol_table, global_attrs)
+        return ObjectNode(name, methods, special_methods, attrs, symbol_table, global_attrs, inherit)
 
 
     def if_expr(self, main_func: bool) -> IfNode:

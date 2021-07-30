@@ -2,6 +2,7 @@ from ..resources.tokens.token_types import TokenType
 from ..resources.symbol_table.symbol_table import SymbolTable
 from ..resources.nodes.nodes import *
 from typing import Union, Optional
+from itertools import zip_longest
 
 
 class Interpreter:
@@ -18,14 +19,17 @@ class Interpreter:
         self.symbol_table["null"] = Number(0)
 
     def visit(self, node: Union[NumberNode, BinOpNode, StringNode, UnaryOpNode,
-                                VarAssignNode, VarAccessNode], symbol_table: Optional[SymbolTable] = None) -> Union[
+                                VarAssignNode, VarAccessNode], symbol_table: Optional[SymbolTable] = None, superclass: Optional[bool] = False) -> Union[
         Number, String]:
         """Visits node inputted with the functions below."""
         method_name = f'visit_{type(node).__name__}'
         method = getattr(self, method_name, self.no_visit_method)
         if symbol_table is None:
             symbol_table = self.symbol_table
-        return method(node, symbol_table)
+        if method_name == 'visit_FunctionCallNode':
+            return method(node, symbol_table, superclass)
+        else:
+            return method(node, symbol_table)
 
     def no_visit_method(self, node: None, symbol_table: SymbolTable):
         """Raised when the visit method is not specified for a certain node."""
@@ -39,9 +43,12 @@ class Interpreter:
         symbol_table[node.func_name] = node
 
     def visit_AccessNode(self, node: AccessNode, symbol_table: SymbolTable):
-        accessing = self.visit(node.accessor, symbol_table)
+        if node.accessor.name == "super":
+            accessing = self.visit(node.accessor, symbol_table["inst"])
+        else:
+            accessing = self.visit(node.accessor, symbol_table)
         if isinstance(accessing, tuple):
-            local_symbol_table = accessing[0].local_symbol_table
+            local_symbol_table = accessing[0].local_symbol_table["inst"]
             try:
                 item = self.visit(node.item_to_access, local_symbol_table)
             except KeyError:
@@ -52,7 +59,10 @@ class Interpreter:
         elif isinstance(node.item_to_access, FunctionCallNode):
             result = accessing[node.item_to_access.func_name]
             result = FunctionCallNode(result.func_name, node.item_to_access.params)
-            item = self.visit(result, accessing)
+            if node.accessor.name == 'super':
+                item = self.visit(result, symbol_table["inst"], True)
+            else:
+                item = self.visit(result, accessing)
         else:
             try:
                 item = self.visit(node.item_to_access, accessing)
@@ -76,21 +86,41 @@ class Interpreter:
         result = self.visit(node.expression, symbol_table)
         return result
 
-    def visit_FunctionCallNode(self, node: FunctionCallNode, symbol_table: SymbolTable) -> None:
+    def visit_FunctionCallNode(self, node: FunctionCallNode, symbol_table: SymbolTable, superclass: bool = False) -> None:
         """Executes function called with said parameters"""
         if symbol_table:
-            if isinstance(symbol_table[node.func_name], tuple):
+            if superclass:
+                res = symbol_table['super'][node.func_name]
+            else:
+                res = symbol_table[node.func_name]
+            if isinstance(res, tuple):
                 class_node = symbol_table[node.func_name][0]
 
                 new_symbol_table = SymbolTable()
+                new_symbol_table["inst"] = SymbolTable()
+                inst = new_symbol_table["inst"]
                 initialization = symbol_table[node.func_name][0].special_methods['init']
                 node.params = [self.visit(param, symbol_table) for param in node.params]
-                if 'inst' in [name_of_param.value for name_of_param in initialization.params]:
-                    node.params = [SymbolTable()] + node.params
-                for param, name_of_param in zip(node.params, initialization.params):
-                    new_symbol_table[name_of_param.value] = param
+                inst["params"] = {}
+                for param, name_of_param in zip(node.params, initialization.params[1:]):
+                    inst["params"][name_of_param.value] = param
 
-                new_symbol_table.symbols.update(class_node.methods)
+                if class_node.inherit:
+                    inheriting_class = symbol_table[class_node.inherit][0]
+                    super_cls = {'super': {}}
+                    for key_spec, super_spec in zip_longest(class_node.special_methods.keys(),
+                                                            inheriting_class.special_methods.keys()):
+                        inst[key_spec] = class_node.special_methods.get(key_spec)
+                        if super_spec:
+                            super_cls['super'][super_spec] = inheriting_class.special_methods.get(super_spec)
+                    for key, key_super in zip_longest(class_node.methods.keys(),
+                                                      inheriting_class.methods.keys()):
+                        inst[key] = class_node.methods.get(key)
+                        if key_super:
+                            super_cls['super'][key_super] = inheriting_class.methods.get(key_super)
+                    inst.symbols.update(super_cls)
+                else:
+                    inst.symbols.update(class_node.methods)
 
                 new_obj = ObjectNode(name=class_node.name, methods=class_node.methods,
                                      special_methods=class_node.special_methods,
@@ -101,19 +131,32 @@ class Interpreter:
                 for line in initialization.body:
                     if line:
                         self.visit(line, new_obj.local_symbol_table)
+
+                if "params" in inst.symbols.keys():
+                    del inst["params"]
                 return new_item
 
             else:
                 node.params = [self.visit(param, symbol_table) for param in node.params]
-                if 'inst' in [param.value for param in symbol_table[node.func_name].params]:
+                if 'inst' in [param.value for param in (symbol_table['super'][node.func_name] if superclass else symbol_table[node.func_name]).params]:
                     node.params = [symbol_table] + node.params
                 try:
-                    func = symbol_table[node.func_name]
+                    if superclass:
+                        func = symbol_table['super'][node.func_name]
+                    else:
+                        func = symbol_table[node.func_name]
                 except KeyError:
                     func = self.symbol_table[node.func_name]
-                for param, name_of_param in zip(node.params, func.params):
-                    func.local_symbol_table[name_of_param.value] = param
 
+                if 'inst' in func.local_symbol_table.symbols.keys() and not isinstance(func.local_symbol_table["inst"], SymbolTable):
+                    func.local_symbol_table["inst"] = symbol_table
+                for param, name_of_param in zip(node.params, func.params):
+                    if 'inst' in func.local_symbol_table.symbols.keys():
+                        func.local_symbol_table["inst"][name_of_param.value] = param
+                        if name_of_param.value in func.local_symbol_table.symbols.keys() and name_of_param.value != 'inst':
+                            del func.local_symbol_table[name_of_param.value]
+                    else:
+                        func.local_symbol_table[name_of_param.value] = param
                 for line in func.body:
                     if line:
                         try:
@@ -121,9 +164,13 @@ class Interpreter:
                         except KeyError:
                             result = self.visit(line, symbol_table)
                         if isinstance(line, ReturnNode):
-                            return result
+                            res = result
+                            return res
                         elif isinstance(result, ReturnNode):
-                            return self.visit(result, func.local_symbol_table)
+                            res = self.visit(result, func.local_symbol_table)
+                            return res
+                if 'inst' in func.local_symbol_table.symbols.keys():
+                    del func.local_symbol_table["inst"]["params"]
 
     def visit_WhileNode(self, node: WhileNode, symbol_table: SymbolTable) -> None:
         """
@@ -286,7 +333,9 @@ class Interpreter:
         try:
             res = symbol_table[node.name]
         except KeyError:
-            if symbol_table != self.symbol_table:
+            if 'params' in symbol_table.symbols.keys():
+                res = symbol_table["params"][node.name]
+            elif symbol_table != self.symbol_table:
                 res = self.symbol_table[node.name]
 
         return res

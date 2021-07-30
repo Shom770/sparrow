@@ -296,13 +296,15 @@ class ObjectNode:
         # constructors
     }
     """
-    def __init__(self, name: str, methods: dict, special_methods: dict, attributes: dict, symbol_table: SymbolTable, global_attrs: list):
+    def __init__(self, name: str, methods: dict, special_methods: dict, attributes: dict, symbol_table: SymbolTable,
+                 global_attrs: list, inherit: str = None):
         self.name = name
         self.methods = methods
         self.special_methods = special_methods
         self.attributes = attributes
         self.class_attrs = global_attrs
         self.local_symbol_table = symbol_table
+        self.inherit = inherit
 
     def __repr__(self):
         return f'(name: {self.name}, methods: {self.methods}, special methods: {self.special_methods}, attributes: {self.local_symbol_table.symbols})'
