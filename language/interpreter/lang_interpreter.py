@@ -19,7 +19,8 @@ class Interpreter:
         self.symbol_table["null"] = Number(0)
 
     def visit(self, node: Union[NumberNode, BinOpNode, StringNode, UnaryOpNode,
-                                VarAssignNode, VarAccessNode], symbol_table: Optional[SymbolTable] = None, superclass: Optional[bool] = False) -> Union[
+                                VarAssignNode, VarAccessNode], symbol_table: Optional[SymbolTable] = None,
+              superclass: Optional[bool] = False) -> Union[
         Number, String]:
         """Visits node inputted with the functions below."""
         method_name = f'visit_{type(node).__name__}'
@@ -43,6 +44,7 @@ class Interpreter:
         symbol_table[node.func_name] = node
 
     def visit_AccessNode(self, node: AccessNode, symbol_table: SymbolTable):
+        """Function used to access an item within the item to access."""
         if node.accessor.name == "super":
             accessing = self.visit(node.accessor, symbol_table["inst"])
         else:
@@ -63,6 +65,15 @@ class Interpreter:
                 item = self.visit(result, symbol_table["inst"], True)
             else:
                 item = self.visit(result, accessing)
+        elif isinstance(node.item_to_access, NumberNode):
+            try:
+                item = self.visit(node.item_to_access, symbol_table)
+                if isinstance(accessing, String):
+                    item = String(accessing.vals[item.value])
+                else:
+                    item = Number(accessing.vals[item.value])
+            except KeyError:
+                return f'{node.item_to_access.value} is not an index'
         else:
             try:
                 item = self.visit(node.item_to_access, accessing)
@@ -93,6 +104,37 @@ class Interpreter:
         node.params = [self.visit(param, symbol_table) for param in node.params]
         if node.name == "print":
             return ('print', '\n'.join([str(print_param.value) for print_param in node.params]))
+        elif node.name == "pop":
+            lst = node.params[0]
+            idx = node.params[1].value
+            del_end = idx != (to_del := len(lst.vals.keys()) - 1)
+            del lst.vals[idx]
+            for key, val in zip(list(lst.vals.keys())[idx:],
+                                list(lst.vals.values())[idx:]):
+                lst.vals[key - 1] = val
+            if del_end:
+                del lst.vals[to_del]
+
+            lst.value = [lst.vals[index].value for index, _ in enumerate(lst.vals.values())]
+
+            return lst
+        elif node.name == 'append':
+            lst = node.params[0]
+            item = node.params[1]
+            lst.vals[sorted(list(lst.vals.keys()))[-1] + 1] = item
+            lst.value = [lst.vals[idx].value for idx, _ in enumerate(lst.vals.values())]
+            return lst
+
+        elif node.name == 'extend':
+            lst = node.params[0]
+            second_lst = node.params[1]
+            cur_idx = sorted(list(lst.vals.keys()))[-1]
+            for val in second_lst.vals.values():
+                cur_idx += 1
+                lst.vals[cur_idx] = val
+
+            lst.value = [lst.vals[idx].value for idx, _ in enumerate(lst.vals.values())]
+            return lst
         else:
             return node.fetch_func()
 
@@ -149,7 +191,8 @@ class Interpreter:
 
             else:
                 node.params = [self.visit(param, symbol_table) for param in node.params]
-                if 'inst' in [param.value for param in (symbol_table['super'][node.func_name] if superclass else symbol_table[node.func_name]).params]:
+                if 'inst' in [param.value for param in (
+                symbol_table['super'][node.func_name] if superclass else symbol_table[node.func_name]).params]:
                     node.params = [symbol_table] + node.params
                 try:
                     if superclass:
@@ -159,7 +202,8 @@ class Interpreter:
                 except KeyError:
                     func = self.symbol_table[node.func_name]
 
-                if 'inst' in func.local_symbol_table.symbols.keys() and not isinstance(func.local_symbol_table["inst"], SymbolTable):
+                if 'inst' in func.local_symbol_table.symbols.keys() and not isinstance(func.local_symbol_table["inst"],
+                                                                                       SymbolTable):
                     func.local_symbol_table["inst"] = symbol_table
                     func.local_symbol_table["inst"]["params"] = {}
                 for param, name_of_param in zip(node.params, func.params):
@@ -246,6 +290,16 @@ class Interpreter:
         """
         return Number(node.tok.value)
 
+    def visit_ListNode(self, node: ListNode, symbol_table: SymbolTable) -> List:
+        """
+        Returns List class from ListNode
+
+        The List class is a class for the list datatype in the language.
+        """
+        node.list = {idx: self.visit(ele, symbol_table) for idx, ele in
+                     enumerate(node.list.values())}
+        return List(node.list)
+
     def visit_StringNode(self, node: StringNode, symbol_table: SymbolTable) -> String:
         """
         Returns a String class from StringNode
@@ -316,6 +370,14 @@ class Interpreter:
                 isinstance(left_node.value, int):
             if node.op_tok.token_type == TokenType.MULT:
                 return String(left_node.value * Number(right_node).value)
+        elif type(left_node).__name__ == 'List' and \
+            type(right_node).__name__ == 'List':
+            if node.op_tok.token_type == TokenType.N_EQ:
+                return Number(left_node != right_node)
+            elif node.op_tok.token_type == TokenType.IS_EQ:
+                return Number(left_node == right_node)
+        else:
+            return Number(0)
 
     def visit_UnaryOpNode(self, node: UnaryOpNode, symbol_table: SymbolTable) -> Number:
         """

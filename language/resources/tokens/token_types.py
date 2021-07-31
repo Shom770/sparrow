@@ -28,6 +28,7 @@ class TokenType(Enum):
     LTE = 23
     GTE = 24
     ACCESS = 25
+    LIST = 26
 
 
 class Token:

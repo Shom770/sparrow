@@ -214,6 +214,7 @@ class String:
     """Class for the string type in the language"""
     def __init__(self, value: str):
         self.value = value
+        self.vals = {idx: val for idx, val in enumerate(self.value)}
 
     def __add__(self, other):
         return String(self.value + other.value)
@@ -241,6 +242,22 @@ class String:
 
     def __eq__(self, other):
         return Number(self.value == other.value)
+
+
+class List:
+    """Class for the list type in the language"""
+    def __init__(self, value: dict):
+        self.vals = value
+        self.value = [item.value for item in self.vals.values()]
+
+    def __repr__(self):
+        return f'{self.value}'
+
+    def __ne__(self, other):
+        return Number(self.vals != other.vals)
+
+    def __eq__(self, other):
+        return Number(self.vals == other.vals)
 
 
 class VarAssignNode:
@@ -310,6 +327,18 @@ class ObjectNode:
         return f'(name: {self.name}, methods: {self.methods}, special methods: {self.special_methods}, attributes: {self.local_symbol_table.symbols})'
 
 
+class ListNode:
+    """
+    Node for lists.
+    A list is syntactically defined as:
+    [*item, *more items]
+    """
+    def __init__(self, mapping: dict):
+        self.list = mapping
+
+    def __repr__(self):
+        return f"({self.list})"
+
 class ExecuteBuiltInsNode:
     """
     Node for executing built in functions
@@ -320,6 +349,10 @@ class ExecuteBuiltInsNode:
         input_int
         is_number
         is_string
+        is_list
+        append
+        pop
+        extend
     """
     def __init__(self, name: str, params: list):
         self.name = name
@@ -365,7 +398,28 @@ class ExecuteBuiltInsNode:
             return Number(0)
 
     def execute_is_string(self, params: list) -> Number:
+        """Helper function to see if the argument is a string"""
         if isinstance(params[0], StringNode) or isinstance(params[0], String):
             return Number(1)
         else:
             return Number(0)
+
+    def execute_is_list(self, params: list) -> Number:
+        """Helper function to see if the argument is a list"""
+        if isinstance(params[0], ListNode) or isinstance(params[0], List):
+            return Number(1)
+        else:
+            return Number(0)
+
+    def execute_append(self, params: list) -> list:
+        """Append a value to a list"""
+        return params
+
+    def execute_pop(self, params: list) -> list:
+        """Remove a certain element of a list with an index."""
+        return params
+
+    def execute_extend(self, params: list) -> list:
+        """Extend a list with another list"""
+        return params
+

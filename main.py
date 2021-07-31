@@ -22,4 +22,4 @@ def run():
 result = run()
 # show results line by line
 text_to_return = [str(line_return[1]) for line_return in result if line_return is not None and isinstance(line_return, tuple)]
-stdout.write(''.join(text_to_return).strip('\n'))
+stdout.write('\n'.join(text_to_return).strip('\n'))

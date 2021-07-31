@@ -45,6 +45,8 @@ class Lexer:
             elif self.current_char == '.':
                 tokens.append(Token(TokenType.ACCESS, '.'))
                 self.advance()
+            elif self.current_char == '[':
+                tokens.append(self.make_list_or_item(tokens))
             elif self.current_char in '+-/*^()!=<>':
                 tokens.append(self.make_operator())
             elif self.current_char == '{':
@@ -59,6 +61,24 @@ class Lexer:
                 tokens.append(self.make_identifier())
 
         return tokens
+
+
+    def make_list_or_item(self, tokens: list) -> Token:
+        """
+        When the current character is [, this function will be ran to
+        discern whether the item is a list or accessing an item.
+        """
+        id_str = ''
+        self.advance()
+        while self.current_char is not None and self.current_char != ']':
+            if self.current_char not in ' \t':
+                id_str += self.current_char
+            self.advance()
+
+        self.advance()
+        return Token(TokenType.LIST, {idx: ele for idx, ele in enumerate(
+                id_str.split(',')
+            )})
 
     def make_identifier(self) -> Token:
         """

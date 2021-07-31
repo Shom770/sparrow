@@ -97,48 +97,58 @@ class Parser:
         assignment of nodes will go on in this function.
         """
         token = self.current_tok
-
         if token is not None:
             if token.token_type == TokenType.KEYWORD and token.value == 'return':
                 self.advance()
                 return_expr = self.expr()
                 return ReturnNode(return_expr)
 
-            if token.token_type == TokenType.KEYWORD and token.value == "object":
+            elif token.token_type == TokenType.KEYWORD and token.value == "object":
                 self.advance()
                 result = self.obj_expr()
                 return result
 
-            if token.token_type == TokenType.KEYWORD and token.value == 'for':
+            elif token.token_type == TokenType.KEYWORD and token.value == 'for':
                 self.advance()
                 result = self.for_expr()
                 return result
 
-            if token.token_type == TokenType.KEYWORD and token.value == "define":
+            elif token.token_type == TokenType.KEYWORD and token.value == "define":
                 self.advance()
                 result = self.create_function_expr()
                 return result
 
-            if token.token_type == TokenType.KEYWORD and token.value == 'while':
+            elif token.token_type == TokenType.KEYWORD and token.value == 'while':
                 self.advance()
                 result = self.while_expr()
                 return result
 
-            if token.token_type == TokenType.KEYWORD and token.value == 'if':
+            elif token.token_type == TokenType.KEYWORD and token.value == 'if':
                 self.advance()
                 result = self.if_expr(main_func=True)
                 return result
-            if token.token_type == TokenType.LPAREN:
+
+            elif token.token_type == TokenType.LPAREN:
                 self.advance()
                 result = self.expr()
 
                 self.advance()
                 return result
 
-            if token.token_type == TokenType.BLOCK_CLOSE:
+            elif token.token_type == TokenType.BLOCK_CLOSE:
                 self.advance()
 
-            if token.token_type == TokenType.STRING:
+            elif token.token_type == TokenType.LIST:
+                res = {}
+                for idx, ele in enumerate(token.value.values()):
+                    if '"' in ele:
+                        res[idx] = StringNode(Token(TokenType.STRING, ele.replace("'", '').replace('"', '')))
+                    else:
+                        res[idx] = NumberNode(Token(TokenType.INT if '.' not in ele else TokenType.FLOAT, ele))
+                self.advance()
+                return ListNode(res)
+
+            elif token.token_type == TokenType.STRING:
                 self.advance()
                 return StringNode(token)
 
@@ -190,7 +200,8 @@ class Parser:
     def function_call_expr(self) -> FunctionCallNode:
         """Used when function is called"""
         func_name = self.current_tok.value
-        if func_name in ('print', 'input', 'input_int', 'is_number', 'is_string'):
+        if func_name in ('print', 'input', 'input_int', 'is_number', 'is_string',
+                         'is_list', 'pop', 'extend', 'append'):
             built_in = True
         else:
             built_in = False
