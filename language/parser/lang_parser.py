@@ -186,7 +186,6 @@ class Parser:
                     access_node = AccessNode(VarAccessNode(token.value), self.factor())
                     if self.current_tok.token_type == TokenType.EQ:
                         self.advance()
-                        self.advance()
                         result = self.expr()
                         return VarAssignNode(access_node, result)
                     else:

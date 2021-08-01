@@ -400,9 +400,17 @@ class Interpreter:
 
         VarAssignNode is a node class used for the assignment of a variable, denoted by 'identifier = value'.
         """
-        assignment = self.visit(node.value, symbol_table)
+        if isinstance(node.name, AccessNode) and isinstance(node.name.item_to_access, NumberNode):
+            var = self.visit(node.name.accessor, symbol_table)
+            var.vals[int(node.name.item_to_access.tok.value)] = self.visit(node.value, symbol_table)
+            if isinstance(var, List):
+                var.value = [item[idx].value for idx, item in enumerate(var.vals.values())]
+            else:
+                return f'Strings are immutable'
+        else:
+            assignment = self.visit(node.value, symbol_table)
 
-        symbol_table[node.name] = assignment
+            symbol_table[node.name] = assignment
 
     def visit_VarAccessNode(self, node: VarAccessNode, symbol_table: SymbolTable) -> Union[Number, String]:
         """
