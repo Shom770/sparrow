@@ -74,6 +74,21 @@ class Interpreter:
                     item = Number(accessing.vals[item.value])
             except KeyError:
                 return f'{node.item_to_access.value} is not an index'
+        elif isinstance(node.item_to_access, SliceNode):
+            if isinstance(accessing, String):
+                new_str = ''
+                for val in range(node.item_to_access.start, node.item_to_access.end,
+                                 node.item_to_access.step):
+                    new_str += accessing.vals[val]
+                return String(new_str)
+            else:
+                new_lst = {}
+                ct = 0
+                for val in range(node.item_to_access.start, node.item_to_access.end,
+                                 node.item_to_access.step):
+                    new_lst[ct] = accessing.vals[val]
+                    ct += 1
+                return List(new_lst)
         else:
             try:
                 item = self.visit(node.item_to_access, accessing)
@@ -192,7 +207,7 @@ class Interpreter:
             else:
                 node.params = [self.visit(param, symbol_table) for param in node.params]
                 if 'inst' in [param.value for param in (
-                symbol_table['super'][node.func_name] if superclass else symbol_table[node.func_name]).params]:
+                        symbol_table['super'][node.func_name] if superclass else symbol_table[node.func_name]).params]:
                     node.params = [symbol_table] + node.params
                 try:
                     if superclass:
@@ -371,7 +386,7 @@ class Interpreter:
             if node.op_tok.token_type == TokenType.MULT:
                 return String(left_node.value * Number(right_node).value)
         elif type(left_node).__name__ == 'List' and \
-            type(right_node).__name__ == 'List':
+                type(right_node).__name__ == 'List':
             if node.op_tok.token_type == TokenType.N_EQ:
                 return Number(left_node != right_node)
             elif node.op_tok.token_type == TokenType.IS_EQ:

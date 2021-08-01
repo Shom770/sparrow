@@ -423,3 +423,14 @@ class ExecuteBuiltInsNode:
         """Extend a list with another list"""
         return params
 
+
+class SliceNode:
+    """
+    Node used for slice objects.
+
+    Slice objects are denoted by [start:end:step]
+    """
+    def __init__(self, start: int, end: int, step: int):
+        self.start = start
+        self.end = end
+        self.step = step

@@ -160,6 +160,11 @@ class Parser:
                 self.advance()
                 return UnaryOpNode(token, self.factor())
 
+            elif token.token_type == TokenType.SLICE:
+                self.advance()
+                token.value = list(map(int, token.value))
+                return SliceNode(token.value[0], token.value[1], token.value[2])
+
             elif self.pos + 1 < len(self.tokens):
                 if (self.tokens[self.pos + 1].token_type in
                     (TokenType.N_EQ, TokenType.IS_EQ, TokenType.GT,

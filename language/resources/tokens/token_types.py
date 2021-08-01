@@ -29,6 +29,7 @@ class TokenType(Enum):
     GTE = 24
     ACCESS = 25
     LIST = 26
+    SLICE = 27
 
 
 class Token:
